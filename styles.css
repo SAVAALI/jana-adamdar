@@ -721,6 +721,239 @@ h2 em {
   background: #f1eef8;
   min-height: 490px;
 }
+.has-real-map {
+  isolation: isolate;
+}
+#real-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.has-real-map .map-city,
+.has-real-map .map-zoom,
+.has-real-map .map-legend,
+.fit-map {
+  z-index: 2;
+}
+.has-real-map .map-legend {
+  bottom: 32px;
+}
+.fit-map {
+  position: absolute;
+  right: 16px;
+  top: 110px;
+  padding: 9px 11px;
+  background: white;
+  color: var(--purple);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.map-tile-notice {
+  position: absolute;
+  z-index: 3;
+  left: 12px;
+  right: 12px;
+  top: 150px;
+  padding: 12px;
+  background: #fff4bf;
+  color: #432078;
+  border-radius: 10px;
+  font-size: 12px;
+  box-shadow: 0 3px 10px #43207820;
+}
+.map-location-notice {
+  padding: 14px;
+  border-radius: 10px;
+  background: #fff7cf;
+  font-size: 13px;
+  margin-top: 12px;
+}
+.leaflet-container {
+  font-family: inherit;
+  background: #f0edf6;
+}
+.leaflet-container a {
+  color: #6631c5;
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+}
+.real-popup {
+  min-width: 160px;
+  max-width: 230px;
+  color: #352249;
+}
+.real-popup strong {
+  font-size: 16px;
+}
+.real-popup p {
+  margin: 8px 0;
+  font-size: 12px;
+}
+.real-popup button {
+  color: #6631c5;
+  font-weight: 700;
+  padding: 8px 0;
+}
+.real-pin {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  background: #6631c5;
+  color: white;
+  border: 3px solid white;
+  box-shadow: 0 3px 12px #43207850;
+}
+.real-pin.violation {
+  background: #ffe052;
+  color: #432078;
+}
+.real-pin.selected {
+  outline: 3px solid #6631c570;
+}
+.real-pin .icon {
+  width: 18px;
+  height: 18px;
+  transform: rotate(45deg);
+}
+.location-fields {
+  background: #f7f3ff;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin: 16px 0 22px;
+}
+.location-fields p,
+.location-hint {
+  color: #796589;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+.location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+.location-actions button,
+.location-search-row button {
+  color: #6631c5;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid #dcd1ee;
+  background: white;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.location-value {
+  display: block;
+  font-size: 12px;
+  color: #796589;
+  font-variant-numeric: tabular-nums;
+}
+.location-dialog {
+  width: min(760px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 24px;
+  overflow: auto;
+  color: #352249;
+  background: white;
+}
+.location-dialog::backdrop {
+  background: #29133f88;
+  backdrop-filter: blur(4px);
+}
+.location-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.location-dialog-header h2 {
+  font-size: clamp(22px, 4vw, 30px);
+  line-height: 1.2;
+  margin-top: 8px;
+}
+.location-search-row {
+  display: flex;
+  gap: 8px;
+}
+.location-search-row input {
+  min-width: 0;
+  flex: 1;
+}
+.location-search-row button {
+  flex-shrink: 0;
+}
+.location-map-wrap {
+  position: relative;
+}
+#location-map {
+  height: clamp(240px, 43dvh, 390px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.location-dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+.location-dialog-footer .button {
+  min-height: 46px;
+  padding: 12px 18px;
+  font-size: 13px;
+}
+.location-results {
+  display: grid;
+  max-height: 140px;
+  overflow: auto;
+  margin: 8px 0;
+}
+.location-results button {
+  text-align: left;
+  padding: 10px;
+  color: #432078;
+  background: #f7f3ff;
+  border-bottom: 1px solid #e8def5;
+  font-size: 13px;
+}
+.location-results button:hover {
+  background: #efe5ff;
+}
+@media (max-width: 480px) {
+  .location-dialog {
+    padding: 16px;
+  }
+  .location-search-row {
+    flex-wrap: wrap;
+  }
+  .location-search-row button {
+    width: 100%;
+  }
+  .location-dialog-footer .button {
+    width: 100%;
+  }
+  .has-real-map .map-city > span {
+    display: none;
+  }
+}
 .map-plane {
   position: absolute;
   inset: 0;

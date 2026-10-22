@@ -260,6 +260,10 @@ function renderList() {
 }
 
 function renderMarkers(visible) {
+  if (cloudMode && window.VSGMap) {
+    window.VSGMap.render(visible, selectedId);
+    return;
+  }
   // Positions are illustrative; this prototype deliberately does not geocode addresses.
   const popupStore = visible.find((store) => store.id === selectedId);
   $("#map-markers").innerHTML =
@@ -316,7 +320,7 @@ function openStore(id, opener = document.activeElement, override = null) {
   const photos = store.photos.filter((photo) => imageURL(photo));
   $("#store-detail").innerHTML = `
     <div class="detail-header"><p class="eyebrow">${store.demo ? "ДЕМО-ОТЧЁТ" : "ОТЧЁТ УЧАСТНИКА"} · АСТАНА</p><button class="icon-button detail-close" id="close-detail" aria-label="Закрыть карточку магазина">${icon("close")}</button><h2 id="detail-title">${escapeHTML(store.name)}</h2><p class="detail-address">${icon("pin")}${store.city ? escapeHTML(store.city) + ", " : ""}${escapeHTML(store.address)}</p></div>
-    <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}, ${displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p><h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : cloudMode ? "Фотографии участника команды. Положение точки на карте схематичное; точный адрес указан выше." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
+    <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}, ${displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p><h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : cloudMode ? "Фотографии участника команды. Точку на карте указывает участник или администратор. Адрес магазина указан выше." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
   $("#store-detail").dataset.storeId = id;
   if (!$("#store-dialog").open) $("#store-dialog").showModal();
   $("#close-detail").focus();
@@ -334,6 +338,7 @@ function changeNewStoreFields() {
   $("#new-store-fields").hidden = !isNew;
   $("#store-name").required = isNew;
   $("#store-address").required = isNew;
+  if (cloudMode) window.VSGMap?.syncDraft();
 }
 
 function renderPhotoPreviews() {
@@ -492,6 +497,7 @@ async function submitReport(event) {
       result: status,
       description,
       photos: pendingPhotos,
+      location: window.VSGMap?.value(),
     });
     return;
   }
@@ -579,6 +585,11 @@ async function submitReport(event) {
 }
 
 function updateZoom() {
+  if (cloudMode) {
+    $("#zoom-in").disabled = false;
+    $("#zoom-out").disabled = false;
+    return;
+  }
   $("#map-plane").style.transform = `scale(${zoom})`;
   $("#zoom-in").disabled = zoom >= 1.6;
   $("#zoom-out").disabled = zoom <= 1;
@@ -618,10 +629,18 @@ function bindEvents() {
     if (detail) openStore(detail.dataset.detail, detail);
   });
   $("#zoom-in").addEventListener("click", () => {
+    if (cloudMode) {
+      window.VSGMap?.zoom(1);
+      return;
+    }
     zoom = Math.min(1.6, +(zoom + 0.2).toFixed(1));
     updateZoom();
   });
   $("#zoom-out").addEventListener("click", () => {
+    if (cloudMode) {
+      window.VSGMap?.zoom(-1);
+      return;
+    }
     zoom = Math.max(1, +(zoom - 0.2).toFixed(1));
     updateZoom();
   });
@@ -726,6 +745,7 @@ function bindEvents() {
 
 async function init() {
   if (cloudMode) {
+    window.VSGMap?.init();
     await window.VSGCloudUI.init();
     return;
   }

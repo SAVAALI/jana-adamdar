@@ -126,6 +126,74 @@ const assert = require("node:assert/strict");
   await denied(PENDING, submit, params);
   await run(A, submit, params);
   await run(A, submit, params);
+  const mapMigration = fs.readFileSync(
+    nodePath.join(__dirname, "../supabase/real-map.sql"),
+    "utf8",
+  );
+  await db.exec(mapMigration);
+  await db.exec(mapMigration);
+  const locate = "select public.vsg_set_report_location($1,$2,$3)";
+  await denied(null, locate, [R, 51.14, 71.43]);
+  await denied(A, locate, [R, 51.14, 71.43]);
+  await denied(ADMIN, locate, [R, 43.25, 76.9]);
+  await denied(ADMIN, locate, [R, null, 71.43]);
+  await denied(ADMIN, locate, [R, "NaN", 71.43]);
+  await run(ADMIN, locate, [R, 51.14, 71.43]);
+  // A retry of the new RPC cannot relocate an existing report.
+  const locatedSubmit =
+    "select public.vsg_submit_located_report($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)";
+  await run(A, locatedSubmit, [...params, 51.2, 71.5]);
+  assert.equal(
+    (await run(A, "select latitude from public.vsg_reports where id=$1", [R]))
+      .rows[0].latitude,
+    51.14,
+  );
+  await denied(PENDING, locatedSubmit, [...params, 51.2, 71.5]);
+  const R2 = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  const path2 = `${A}/${R2}/${F}.png`;
+  await run(
+    A,
+    "insert into storage.objects(bucket_id,name) values('vsg-report-photos',$1)",
+    [path2],
+  );
+  const locatedParams = [
+    R2,
+    null,
+    "Точная точка",
+    "Достык, 5",
+    "clean",
+    "Сроки проверены, всё хорошо.",
+    JSON.stringify([{ path: path2, filename: "товар.png" }]),
+    51.15,
+    71.44,
+  ];
+  await denied(A, locatedSubmit, [...locatedParams.slice(0, 7), 43.25, 76.9]);
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from public.vsg_reports where id=$1",
+        [R2],
+      )
+    ).rows[0].n,
+    0,
+  );
+  await run(A, locatedSubmit, locatedParams);
+  assert.equal(
+    (await run(A, "select longitude from public.vsg_reports where id=$1", [R2]))
+      .rows[0].longitude,
+    71.44,
+  );
+  assert.equal(
+    (await run(null, "select * from public.vsg_public_reports")).rows.length,
+    0,
+  );
+  // Remove only this test fixture; continue the original one-report scenarios below.
+  await db.query("delete from public.vsg_report_photos where report_id=$1", [
+    R2,
+  ]);
+  await db.query("delete from public.vsg_reports where id=$1", [R2]);
+  await db.query("delete from public.vsg_stores where name='Точная точка'");
+  await db.query("delete from storage.objects where name=$1", [path2]);
   assert.equal(
     (await db.query("select count(*)::int n from public.vsg_reports")).rows[0]
       .n,
@@ -163,6 +231,8 @@ const assert = require("node:assert/strict");
   const published = (await run(null, "select * from public.vsg_public_reports"))
     .rows;
   assert.equal(published.length, 1);
+  assert.equal(published[0].latitude, 51.14);
+  assert.equal(published[0].longitude, 71.43);
   assert.ok(!("author_id" in published[0]));
   assert.ok(!("moderation_note" in published[0]));
   assert.ok(!("email" in published[0]));
@@ -229,7 +299,7 @@ const assert = require("node:assert/strict");
     false,
   );
   console.log(
-    "PASS: repeatable schema; pending signup; admin bootstrap; role boundaries; private pending reports/photos; approved-only public view/stats/photos; no personal fields; no direct mutation/escalation; immutable attached photos; orphan cleanup; atomic rejection; idempotent submission.",
+    "PASS: repeatable schema/map migration; pending signup; admin bootstrap; role boundaries; private pending reports/photos/coordinates; approved-only public view/stats/photos/coordinates; admin-only location correction; coordinate bounds; atomic located submission; no personal fields; no direct mutation/escalation; immutable attached photos; orphan cleanup; atomic rejection; idempotent submission.",
   );
   await db.close();
 })().catch((error) => {

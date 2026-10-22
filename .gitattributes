@@ -1,2 +1,5 @@
 # Preserve intentional whitespace inside the verified vendor bundle's strings.
 assets/supabase.js -whitespace
+# Upstream Leaflet CSS and license use CRLF; preserve the verified archive bytes.
+assets/leaflet/leaflet.css whitespace=cr-at-eol
+assets/leaflet/LICENSE.txt whitespace=cr-at-eol

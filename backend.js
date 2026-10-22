@@ -143,6 +143,8 @@ window.VSGBackend = class VSGBackend {
       city: isPublic ? row.city : row.store?.city || "Астана",
       x: 24 + ((index * 17) % 54),
       y: 44 + ((index * 13) % 39),
+      latitude: typeof row.latitude === "number" ? row.latitude : null,
+      longitude: typeof row.longitude === "number" ? row.longitude : null,
       status: row.result,
       date: row.occurred_at,
       description: row.description,
@@ -177,7 +179,7 @@ window.VSGBackend = class VSGBackend {
     let query = this.client
       .from("vsg_reports")
       .select(
-        "id,store_id,result,description,occurred_at,created_at,moderation_state,moderation_note,author_id,store:vsg_stores(name,address,city),photos:vsg_report_photos(storage_path,filename,sort_order)",
+        "*,store:vsg_stores(name,address,city),photos:vsg_report_photos(storage_path,filename,sort_order)",
       )
       .order("created_at", { ascending: false })
       .limit(100);
@@ -208,6 +210,16 @@ window.VSGBackend = class VSGBackend {
       }),
     );
   }
+  async setLocation(reportId, location) {
+    this.check(
+      await this.client.rpc("vsg_set_report_location", {
+        p_report_id: reportId,
+        p_latitude: location.latitude,
+        p_longitude: location.longitude,
+      }),
+    );
+  }
+
   async setMemberRole(id, role) {
     this.check(
       await this.client.rpc("vsg_set_member_role", {
@@ -218,7 +230,7 @@ window.VSGBackend = class VSGBackend {
   }
 
   async submit(
-    { storeId, name, address, result, description, photos },
+    { storeId, name, address, result, description, photos, location },
     progress,
   ) {
     const session = await this.session();
@@ -230,6 +242,7 @@ window.VSGBackend = class VSGBackend {
       address,
       result,
       description,
+      location,
       photos.map((photo) => photo.id),
     ]);
     if (this.attempt?.signature !== signature)
@@ -272,15 +285,21 @@ window.VSGBackend = class VSGBackend {
       });
     }
     progress("Отправляем на проверку…");
-    const response = await this.client.rpc("vsg_submit_report", {
-      p_report_id: attempt.id,
-      p_store_id: storeId || null,
-      p_store_name: name || null,
-      p_store_address: address || null,
-      p_result: result,
-      p_description: description,
-      p_photos: attachments,
-    });
+    const response = await this.client.rpc(
+      location ? "vsg_submit_located_report" : "vsg_submit_report",
+      {
+        ...(location
+          ? { p_latitude: location.latitude, p_longitude: location.longitude }
+          : {}),
+        p_report_id: attempt.id,
+        p_store_id: storeId || null,
+        p_store_name: name || null,
+        p_store_address: address || null,
+        p_result: result,
+        p_description: description,
+        p_photos: attachments,
+      },
+    );
     if (response.error) {
       // A lost response may follow a successful transaction. Confirm before retrying.
       const saved = await this.client

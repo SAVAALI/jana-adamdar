@@ -15,7 +15,10 @@
       src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.18"
       onerror="this.onerror=null;const fallback=document.createElement('script');fallback.src='assets/tailwind-browser.js';document.head.appendChild(fallback)"
     ></script>
+    <link rel="stylesheet" href="assets/leaflet/leaflet.css" />
     <link rel="stylesheet" href="styles.css" />
+    <script src="assets/leaflet/leaflet.js" defer></script>
+    <script src="map.js" defer></script>
     <script src="config.js" defer></script>
     <script src="assets/supabase.js" defer></script>
     <script src="backend.js" defer></script>
@@ -281,10 +284,20 @@
               />
               <div id="map-markers"></div>
             </div>
+            <div id="real-map" hidden></div>
+            <p
+              id="map-tile-notice"
+              class="map-tile-notice"
+              role="status"
+              hidden
+            ></p>
             <div class="map-city">
               <svg class="icon"><use href="#i-pin" /></svg> Астана
               <span>ДЕМО-КАРТА</span>
             </div>
+            <button type="button" id="fit-map" class="fit-map" hidden>
+              Все точки
+            </button>
             <div class="map-zoom">
               <button id="zoom-in" aria-label="Приблизить карту">+</button
               ><button id="zoom-out" aria-label="Отдалить карту">−</button>
@@ -306,6 +319,12 @@
             </div>
           </aside>
         </div>
+        <p
+          id="map-location-notice"
+          class="map-location-notice"
+          role="status"
+          hidden
+        ></p>
         <p class="map-disclaimer">
           <svg class="icon"><use href="#i-clock" /></svg> Статус отражает
           результат последней проверки. Все магазины, адреса и нарушения в демо
@@ -381,6 +400,21 @@
                 maxlength="160"
                 placeholder="Улица, номер дома"
               />
+            </div>
+            <div id="location-fields" class="location-fields" hidden>
+              <span class="field-label">Место магазина на карте</span>
+              <p>
+                Укажите здание, чтобы проверку было видно на карте. Для старых
+                отчётов место может добавить администратор.
+              </p>
+              <div class="location-actions">
+                <button type="button" id="choose-location">
+                  Выбрать место на карте</button
+                ><button type="button" id="clear-location">Убрать точку</button>
+              </div>
+              <span id="location-value" class="location-value"
+                >Место ещё не выбрано</span
+              >
             </div>
             <fieldset class="result-fieldset">
               <legend class="field-label">Результат проверки</legend>
@@ -553,6 +587,66 @@
         <svg class="icon"><use href="#i-close" /></svg></button
       ><img id="lightbox-image" alt="Фотография из отчёта" />
       <p id="lightbox-caption"></p>
+    </dialog>
+    <dialog
+      id="location-dialog"
+      class="location-dialog"
+      aria-labelledby="location-title"
+    >
+      <div class="location-dialog-header">
+        <div>
+          <p class="eyebrow">АСТАНА · ТОЧНОЕ МЕСТО</p>
+          <h2 id="location-title">Где находится магазин?</h2>
+        </div>
+        <button
+          type="button"
+          class="icon-button"
+          id="close-location"
+          aria-label="Закрыть выбор места"
+        >
+          ×
+        </button>
+      </div>
+      <div class="location-search-row">
+        <input
+          id="location-search"
+          class="text-input"
+          aria-label="Адрес магазина в Астане"
+          placeholder="Улица и номер дома"
+          maxlength="180"
+        /><button type="button" id="location-search-button">Найти адрес</button>
+      </div>
+      <p id="location-search-status" class="location-hint" role="status"></p>
+      <div id="location-results" class="location-results"></div>
+      <div class="location-map-wrap">
+        <div
+          id="location-map"
+          aria-label="Нажмите на здание магазина, чтобы выбрать его место"
+        ></div>
+        <p
+          id="picker-tile-notice"
+          class="map-tile-notice"
+          role="status"
+          hidden
+        ></p>
+      </div>
+      <p class="location-hint">
+        Карту можно двигать и увеличивать. Выбранную метку можно перетащить.
+        Поиск: Photon / OpenStreetMap.
+      </p>
+      <p id="location-error" class="field-error" role="alert"></p>
+      <div class="location-dialog-footer">
+        <span id="picked-coordinates" class="location-value"
+          >Выберите точку на карте</span
+        ><button
+          type="button"
+          class="button button-purple"
+          id="save-location"
+          disabled
+        >
+          Подтвердить место
+        </button>
+      </div>
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>

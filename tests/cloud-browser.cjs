@@ -47,6 +47,8 @@ const reports = [
     description: "Сроки проверены, нарушений не найдено.",
     occurred_at: new Date().toISOString(),
     created_at: new Date().toISOString(),
+    latitude: 51.13,
+    longitude: 71.425,
     moderation_state: "approved",
     moderation_note: "",
     photos: [{ storage_path: photoPath, filename: "фото.png", sort_order: 0 }],
@@ -125,6 +127,43 @@ let debugPage;
     }),
   );
   await context.route("https://cdn.jsdelivr.net/**", (route) => route.abort());
+  let tilesFail = false,
+    searchFail = false;
+  await context.route("https://tile.openstreetmap.org/**", (route) =>
+    tilesFail
+      ? route.abort()
+      : route.fulfill({
+          contentType: "image/png",
+          body: Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==",
+            "base64",
+          ),
+        }),
+  );
+  await context.route("https://photon.komoot.io/**", (route) =>
+    searchFail
+      ? route.fulfill({ status: 503, body: "Unavailable" })
+      : route.fulfill({
+          contentType: "application/json",
+          body: JSON.stringify({
+            features: [
+              {
+                geometry: { coordinates: [71.43, 51.14] },
+                properties: {
+                  name: "Магазин <test>",
+                  street: "Достык",
+                  housenumber: "5",
+                  city: "Астана",
+                },
+              },
+              {
+                geometry: { coordinates: [76.9, 43.25] },
+                properties: { name: "Другой город" },
+              },
+            ],
+          }),
+        }),
+  );
   await context.route(HOST + "/**", async (route) => {
     const request = route.request(),
       url = new URL(request.url()),
@@ -252,7 +291,12 @@ let debugPage;
         Id: crypto.randomUUID(),
       });
     }
-    if (path === "/rest/v1/rpc/vsg_submit_report") {
+    if (
+      [
+        "/rest/v1/rpc/vsg_submit_report",
+        "/rest/v1/rpc/vsg_submit_located_report",
+      ].includes(path)
+    ) {
       const data = request.postDataJSON();
       submitted.push(data.p_report_id);
       if (firstFailure) {
@@ -274,6 +318,8 @@ let debugPage;
           id: data.p_report_id,
           store_id: store.id,
           author_id: actor(request),
+          latitude: data.p_latitude ?? null,
+          longitude: data.p_longitude ?? null,
           result: data.p_result,
           description: data.p_description,
           occurred_at: new Date().toISOString(),
@@ -296,6 +342,14 @@ let debugPage;
       report.moderation_note = data.p_note;
       return route.fulfill({ status: 204, headers });
     }
+    if (path === "/rest/v1/rpc/vsg_set_report_location") {
+      assert.equal(actor(request), ADMIN);
+      const data = request.postDataJSON();
+      const report = reports.find((r) => r.id === data.p_report_id);
+      report.latitude = data.p_latitude;
+      report.longitude = data.p_longitude;
+      return route.fulfill({ status: 204, headers });
+    }
     if (path === "/rest/v1/rpc/vsg_set_member_role") {
       assert.equal(actor(request), ADMIN);
       const data = request.postDataJSON();
@@ -314,6 +368,30 @@ let debugPage;
     await page.locator(".store-card").filter({ hasText: "Полка" }).count(),
     0,
   );
+  assert.equal(await page.locator("#real-map.leaflet-container").count(), 1);
+  await page.locator("[data-real-marker]").first().waitFor();
+  assert.equal(await page.locator("[data-real-marker]").count(), 1);
+  assert.equal(await page.locator("#map-plane").isVisible(), false);
+  assert.equal(
+    await page.locator("#real-map .leaflet-control-attribution").isVisible(),
+    true,
+  );
+  const zoomBefore = await page
+    .locator("#real-map .leaflet-proxy")
+    .getAttribute("style");
+  await page.locator("#zoom-in").click();
+  await page.waitForTimeout(350);
+  assert.notEqual(
+    await page.locator("#real-map .leaflet-proxy").getAttribute("style"),
+    zoomBefore,
+  );
+  await page.locator("#fit-map").click();
+  await page.locator("[data-real-marker]").first().click();
+  await page.locator(".real-popup button").click();
+  await page.locator("#close-detail").click();
+  await page.locator('[data-filter="violation"]').click();
+  assert.equal(await page.locator("[data-real-marker]").count(), 0);
+  await page.locator('[data-filter="all"]').click();
   await page.locator("#account-button").click();
   await page.locator("[data-auth-mode=register]").click();
   await page.locator("#auth-name").fill("Тестовый участник");
@@ -362,6 +440,19 @@ let debugPage;
   await page.locator("#store-select").selectOption("new");
   await page.locator("#store-name").fill("Общий магазин");
   await page.locator("#store-address").fill("Астана, улица Достык, 5");
+  await page.locator("#choose-location").click();
+  assert.equal(await page.locator("#save-location").isDisabled(), true);
+  await page.locator("#location-search-button").click();
+  await page.locator("#location-results button").waitFor();
+  assert.equal(await page.locator("#location-results button").count(), 1);
+  assert.match(await page.locator("#location-results").textContent(), /<test>/);
+  assert.equal(await page.locator("#location-results test").count(), 0);
+  await page.locator("#location-results button").click();
+  await page.locator("#save-location").click();
+  assert.match(
+    await page.locator("#location-value").textContent(),
+    /51.140000/,
+  );
   await page
     .locator("#report-description")
     .fill("На упаковке срок истёк на два дня. Фото маркировки приложено.");
@@ -381,6 +472,8 @@ let debugPage;
   assert.equal(submitted[0], submitted[1]);
   assert.equal(uploaded, 1);
   assert.equal(await page.locator(".store-card").count(), 1);
+  assert.equal(await page.locator("[data-real-marker]").count(), 1);
+  assert.equal(reports.at(-1).latitude, 51.14);
   assert.match(
     await page.locator("#form-success").textContent(),
     /на проверку/,
@@ -412,6 +505,13 @@ let debugPage;
   await page.waitForFunction(
     () => document.querySelectorAll(".store-card").length === 2,
   );
+  assert.equal(await page.locator("[data-real-marker]").count(), 2);
+  await page.locator('[data-report-location="' + submitted[1] + '"]').click();
+  await page.locator("#location-map").click({ position: { x: 180, y: 180 } });
+  await page.locator("#save-location").click();
+  await page.locator("#location-dialog").waitFor({ state: "hidden" });
+  assert.notEqual(reports.at(-1).latitude, 51.14);
+  assert.equal(await page.locator("[data-real-marker]").count(), 2);
   assert.match(await page.locator("#stat-stores").textContent(), /^2/);
   assert.match(await page.locator("#stat-issues").textContent(), /^1/);
   await page
@@ -444,6 +544,34 @@ let debugPage;
     true,
   );
   await page.locator("#close-account").click();
+  await page.locator("#store-select").selectOption("new");
+  await page.locator("#choose-location").click();
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await page
+        .locator("#location-dialog")
+        .evaluate((d) => d.scrollWidth <= d.clientWidth),
+      true,
+      "picker width " + width,
+    );
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .locator("#location-dialog")
+    .screenshot({ path: "/tmp/vsg-real-map-picker-mobile.png" });
+  searchFail = true;
+  await page.locator("#location-search").fill("Неизвестный адрес");
+  await page.locator("#location-search-button").click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector("#location-search-status")
+      .textContent.includes("недоступен"),
+  );
+  await page.locator("#location-map").click({ position: { x: 100, y: 100 } });
+  assert.equal(await page.locator("#save-location").isDisabled(), false);
+  await page.keyboard.press("Escape");
+  searchFail = false;
   publicFailure = true;
   await page.locator("#refresh-cloud").click();
   await page.waitForFunction(() =>
@@ -480,9 +608,31 @@ let debugPage;
   await page.locator("#auth-form button[type=submit]").click();
   await page.locator("#sign-out").waitFor();
   assert.equal(passwordUpdates, 1);
+  await page.locator("#close-account").click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page
+    .locator("#map-view")
+    .screenshot({ path: "/tmp/vsg-real-map-desktop.png" });
+  // A published report without coordinates stays in the list; never invent a pin.
+  reports[0].latitude = null;
+  reports[0].longitude = null;
+  await page.locator("#refresh-cloud").click();
+  await page.waitForFunction(
+    () => document.querySelectorAll("[data-real-marker]").length === 1,
+  );
+  assert.match(
+    await page.locator("#map-location-notice").textContent(),
+    /Без места на карте: 1/,
+  );
+  assert.equal(await page.locator(".store-card").count(), 2);
+  tilesFail = true;
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator("#map-tile-notice").waitFor({ state: "visible" });
+  assert.equal(await page.locator(".store-card").count(), 2);
+  assert.equal(await page.locator("[data-real-marker]").count(), 1);
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: actual Supabase SDK against fixture HTTP API; public approved data; signed private photos; auth/signup/reset/error; account roles; upload and retry with stable ID/no duplicate upload; pending report stays private; admin approval updates public map; membership approval; gallery; stale-data error; 320–1440 responsive layout.",
+    "PASS: actual Supabase SDK against fixture HTTP API; public approved data; signed private photos; auth/signup/reset/error; account roles; upload and retry with stable ID/no duplicate upload; pending report stays private; real OSM map/attribution; address search/escaping/bounds; coordinate picker; saved coordinates; admin location correction; admin approval updates public map; membership approval; gallery; stale-data error; 320–1440 responsive layout.",
   );
   await browser.close();
 })().catch(async (error) => {

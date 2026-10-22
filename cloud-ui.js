@@ -34,6 +34,8 @@ window.VSGCloudUI = (() => {
       signup_disabled:
         "Регистрация сейчас закрыта. Свяжитесь с администратором команды.",
     };
+    if (error?.code === "PGRST202")
+      return "Для сохранения места на карте выполните real-map.sql в SQL Editor Supabase.";
     if (known[error?.code]) return known[error.code];
     if (error?.message === "Invalid login credentials")
       return known.invalid_credentials;
@@ -152,7 +154,7 @@ window.VSGCloudUI = (() => {
 
   function reportCard(report, admin = false) {
     accountReports.set(report.reportId, report);
-    return `<article class="account-report"><div class="account-report-heading"><strong>${escapeHTML(report.name)}</strong><span class="review-badge ${report.moderationState}">${reviewStates[report.moderationState]}</span></div><p class="account-report-address">${escapeHTML(report.address)} · ${displayDate(report.date)}</p><p class="account-report-description">${escapeHTML(report.description.slice(0, 160))}${report.description.length > 160 ? "…" : ""}</p>${report.moderationNote ? `<p class="moderation-note">Комментарий: ${escapeHTML(report.moderationNote)}</p>` : ""}<button type="button" class="account-text-button" data-private-report="${report.reportId}">Фото и подробности ${icon("arrow")}</button>${admin ? `<div class="moderation-controls">${report.moderationState !== "approved" ? `<button type="button" data-review="approved" data-report-id="${report.reportId}">Опубликовать</button>` : ""}${report.moderationState !== "rejected" ? `<label class="field-label" for="note-${report.reportId}">Комментарий к отклонению</label><input class="text-input" id="note-${report.reportId}" maxlength="500" placeholder="Например, не видна дата на упаковке"><button type="button" class="reject-button" data-review="rejected" data-report-id="${report.reportId}">${report.moderationState === "approved" ? "Снять с публикации" : "Отклонить"}</button>` : ""}</div>` : ""}</article>`;
+    return `<article class="account-report"><div class="account-report-heading"><strong>${escapeHTML(report.name)}</strong><span class="review-badge ${report.moderationState}">${reviewStates[report.moderationState]}</span></div><p class="account-report-address">${escapeHTML(report.address)} · ${displayDate(report.date)}</p><p class="account-report-description">${escapeHTML(report.description.slice(0, 160))}${report.description.length > 160 ? "…" : ""}</p>${report.moderationNote ? `<p class="moderation-note">Комментарий: ${escapeHTML(report.moderationNote)}</p>` : ""}<button type="button" class="account-text-button" data-private-report="${report.reportId}">Фото и подробности ${icon("arrow")}</button>${admin ? `<button type="button" class="account-text-button" data-report-location="${report.reportId}">${window.VSGMap?.valid(report) ? "Изменить место на карте" : "Указать место на карте"}</button><div class="moderation-controls">${report.moderationState !== "approved" ? `<button type="button" data-review="approved" data-report-id="${report.reportId}">Опубликовать</button>` : ""}${report.moderationState !== "rejected" ? `<label class="field-label" for="note-${report.reportId}">Комментарий к отклонению</label><input class="text-input" id="note-${report.reportId}" maxlength="500" placeholder="Например, не видна дата на упаковке"><button type="button" class="reject-button" data-review="rejected" data-report-id="${report.reportId}">${report.moderationState === "approved" ? "Снять с публикации" : "Отклонить"}</button>` : ""}</div>` : ""}</article>`;
   }
 
   async function loadAccount() {
@@ -320,6 +322,19 @@ window.VSGCloudUI = (() => {
         }
         return;
       }
+      const locationButton = event.target.closest("[data-report-location]");
+      if (locationButton) {
+        const report = accountReports.get(
+          locationButton.dataset.reportLocation,
+        );
+        if (report && cloudState.profile?.role === "admin")
+          window.VSGMap.editReport(report, async (point) => {
+            await cloudState.backend.setLocation(report.reportId, point);
+            await Promise.all([loadAccount(), refreshPublic()]);
+            toast("Место проверки сохранено.");
+          });
+        return;
+      }
       const reportButton = event.target.closest("[data-private-report]");
       if (reportButton) {
         const report = accountReports.get(reportButton.dataset.privateReport);
@@ -375,9 +390,9 @@ window.VSGCloudUI = (() => {
     $(".form-note").innerHTML =
       `${icon("shield")} Фото доступны команде. Публичными они станут после проверки отчёта.`;
     $(".map-disclaimer").innerHTML =
-      `${icon("clock")} Результат последней одобренной проверки. Положение точек на схеме условное; точный адрес — в карточке.`;
+      `${icon("clock")} На карте — последние опубликованные проверки. Место указывает участник или администратор; адрес и фотографии — в карточке.`;
     $(".hero-note").textContent = "Реальные проверки. Общая забота об Астане.";
-    $(".map-credit").textContent = "СХЕМА ПРОВЕРОК · НЕ ДЛЯ НАВИГАЦИИ";
+
     $("#current-year").textContent = new Date().getFullYear();
     bindEvents();
     bindCloudEvents();
