@@ -1,0 +1,2 @@
+# Preserve intentional whitespace inside the verified vendor bundle's strings.
+assets/supabase.js -whitespace
