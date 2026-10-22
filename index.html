@@ -23,6 +23,8 @@
     <script src="assets/supabase.js" defer></script>
     <script src="backend.js" defer></script>
     <script src="cloud-ui.js" defer></script>
+    <script src="drafts.js" defer></script>
+    <script src="history.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body class="selection:bg-[#ffe052] selection:text-[#6631c5]">
@@ -371,6 +373,21 @@
             <div class="form-heading">
               <h3>Новый отчёт</h3>
               <span class="form-tag">С МЕСТА СОБЫТИЙ</span>
+            </div>
+            <div id="draft-panel" class="draft-panel">
+              <div>
+                <span class="draft-label">ЧЕРНОВИК</span>
+                <p id="draft-status" role="status" aria-live="polite">
+                  Готовим автосохранение…
+                </p>
+              </div>
+              <div class="draft-actions">
+                <button type="button" id="restore-draft" hidden>
+                  Восстановить</button
+                ><button type="button" id="discard-draft" hidden>
+                  Удалить черновик
+                </button>
+              </div>
             </div>
             <div id="report-access" class="report-access" hidden></div>
             <label class="field-label" for="store-select"

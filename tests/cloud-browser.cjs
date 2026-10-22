@@ -54,6 +54,26 @@ const reports = [
     photos: [{ storage_path: photoPath, filename: "фото.png", sort_order: 0 }],
   },
 ];
+for (let i = 1; i <= 22; i++)
+  reports.push({
+    ...reports[0],
+    id: crypto.randomUUID(),
+    description: `Прошлая опубликованная проверка ${i}`,
+    occurred_at: new Date(Date.now() - i * 86400000).toISOString(),
+    created_at: new Date(Date.now() - i * 86400000).toISOString(),
+  });
+reports.push({
+  ...reports[0],
+  id: crypto.randomUUID(),
+  description: "СЕКРЕТНЫЙ ЧЕРНОВОЙ ОТЧЁТ",
+  moderation_state: "pending",
+});
+reports.push({
+  ...reports[0],
+  id: crypto.randomUUID(),
+  description: "СКРЫТЫЙ ОТКЛОНЁННЫЙ ОТЧЁТ",
+  moderation_state: "rejected",
+});
 function user(member) {
   return {
     id: member.user_id,
@@ -116,8 +136,11 @@ let debugPage;
     signupCalls = 0,
     recoverCalls = 0,
     passwordUpdates = 0,
-    publicFailure = false;
+    publicFailure = false,
+    historyFailure = false,
+    historyMissing = false;
   const submitted = [];
+  const uploadedPaths = new Set();
   await context.route(BASE + "/config.js", (route) =>
     route.fulfill({
       contentType: "application/javascript",
@@ -215,18 +238,50 @@ let debugPage;
         user(members.find((m) => m.user_id === actor(request)) || members[0]),
       );
     }
-    if (path === "/rest/v1/vsg_public_reports") {
-      if (publicFailure) return json({ message: "Unavailable" }, 503);
-      const approved = reports.filter((r) => r.moderation_state === "approved");
+    if (
+      ["/rest/v1/vsg_public_reports", "/rest/v1/vsg_public_history"].includes(
+        path,
+      )
+    ) {
+      const history = path.endsWith("history");
+      if (history && historyMissing)
+        return json({ code: "PGRST205", message: "Missing view" }, 404);
+      if ((history && historyFailure) || (!history && publicFailure))
+        return json({ message: "Unavailable" }, 503);
+      let approved = reports
+        .filter((r) => r.moderation_state === "approved")
+        .sort(
+          (a, b) =>
+            b.occurred_at.localeCompare(a.occurred_at) ||
+            b.created_at.localeCompare(a.created_at) ||
+            b.id.localeCompare(a.id),
+        );
+      if (history) {
+        const storeId = url.searchParams.get("store_id")?.replace("eq.", "");
+        approved = approved.filter((r) => r.store_id === storeId);
+        const from = Number(url.searchParams.get("offset") || 0),
+          count = Number(url.searchParams.get("limit") || 21);
+        approved = approved.slice(from, from + count);
+      } else
+        approved = approved.filter(
+          (r, index, all) =>
+            all.findIndex((item) => item.store_id === r.store_id) === index,
+        );
       return json(
         approved.map((r) => ({
-          ...r,
+          id: r.id,
+          store_id: r.store_id,
           store_name: shops.find((s) => s.id === r.store_id).name,
           address: shops.find((s) => s.id === r.store_id).address,
           city: "Астана",
+          result: r.result,
+          description: r.description,
+          occurred_at: r.occurred_at,
+          created_at: r.created_at,
+          latitude: r.latitude,
+          longitude: r.longitude,
           photos: r.photos.map((p) => ({
             path: p.storage_path,
-            filename: p.filename,
             order: p.sort_order,
           })),
         })),
@@ -286,6 +341,16 @@ let debugPage;
       });
     if (path.startsWith("/storage/v1/object/vsg-report-photos/")) {
       uploaded++;
+      if (uploadedPaths.has(path))
+        return json(
+          {
+            statusCode: "409",
+            error: "Duplicate",
+            message: "The resource already exists",
+          },
+          409,
+        );
+      uploadedPaths.add(path);
       return json({
         Key: decodeURIComponent(path.replace("/storage/v1/object/", "")),
         Id: crypto.randomUUID(),
@@ -388,6 +453,52 @@ let debugPage;
   await page.locator("#fit-map").click();
   await page.locator("[data-real-marker]").first().click();
   await page.locator(".real-popup button").click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".history-entry").length === 20,
+  );
+  assert.equal(
+    await page
+      .locator("#store-history")
+      .textContent()
+      .then((t) => t.includes("СЕКРЕТНЫЙ")),
+    false,
+  );
+  assert.equal(
+    await page
+      .locator("#store-history")
+      .textContent()
+      .then((t) => t.includes("СКРЫТЫЙ")),
+    false,
+  );
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await page
+        .locator("#store-dialog")
+        .evaluate((d) => d.scrollWidth <= d.clientWidth),
+      true,
+      "history width " + width,
+    );
+  }
+  await page.locator("#store-history").scrollIntoViewIfNeeded();
+  await page
+    .locator("#store-dialog")
+    .screenshot({ path: "/tmp/vsg-history-mobile.png" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator("#history-more").click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".history-entry").length === 23,
+  );
+  assert.equal(await page.locator("#history-more").isVisible(), false);
+  await page.locator(".history-entry summary").last().click();
+  await page
+    .locator(".history-entry")
+    .last()
+    .locator(".history-photos button")
+    .first()
+    .click();
+  await page.locator("#lightbox-image").evaluate((img) => img.decode());
+  await page.keyboard.press("Escape");
   await page.locator("#close-detail").click();
   await page.locator('[data-filter="violation"]').click();
   assert.equal(await page.locator("[data-real-marker]").count(), 0);
@@ -460,17 +571,105 @@ let debugPage;
   await page.waitForFunction(
     () => document.querySelectorAll(".photo-preview").length === 1,
   );
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("сохранён"),
+  );
+  const draftPhoto = await page
+    .locator(".photo-preview img")
+    .getAttribute("src");
+  // Another tab can remove the shared draft's photo. Editing this open form
+  // must store the still-selected image again, without trusting an old cache.
+  await page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const request = indexedDB.open("vsg-report-drafts", 1);
+        request.onsuccess = () => {
+          const db = request.result,
+            tx = db.transaction("photos", "readwrite");
+          tx.objectStore("photos").clear();
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        };
+        request.onerror = () => reject(request.error);
+      }),
+  );
+  await page
+    .locator("#report-description")
+    .fill("На упаковке срок истёк на два дня. Дополнено перед перезагрузкой.");
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("сохранён"),
+  );
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(
+    () => document.querySelectorAll(".photo-preview").length === 1,
+  );
+  assert.equal(await page.locator("#store-name").inputValue(), "Общий магазин");
+  assert.equal(await page.locator("#store-select").inputValue(), "new");
+  assert.equal(
+    await page.locator(".photo-preview img").getAttribute("src"),
+    draftPhoto,
+  );
+  assert.match(
+    await page.locator("#location-value").textContent(),
+    /51.140000/,
+  );
+  await context.setOffline(true);
+  await page
+    .locator("#report-description")
+    .fill("На упаковке срок истёк на два дня. Сохранено без интернета.");
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("сохранён"),
+  );
+  await context.setOffline(false);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(() =>
+    document
+      .querySelector("#report-description")
+      .value.includes("без интернета"),
+  );
   await page.locator("#submit-report").click();
   await page.waitForFunction(() =>
     document.querySelector("#form-error").textContent.includes("повторить"),
   );
   assert.equal(await page.locator(".photo-preview").count(), 1);
   assert.equal(await page.locator(".store-card").count(), 1);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(
+    () => document.querySelectorAll(".photo-preview").length === 1,
+  );
   await page.locator("#submit-report").click();
   await page.locator("#form-success").waitFor({ state: "visible" });
   assert.equal(submitted.length, 2);
   assert.equal(submitted[0], submitted[1]);
-  assert.equal(uploaded, 1);
+  assert.equal(uploaded, 2);
+  assert.equal(uploadedPaths.size, 1);
+  assert.deepEqual(
+    await page.evaluate(
+      () =>
+        new Promise((resolve, reject) => {
+          const request = indexedDB.open("vsg-report-drafts", 1);
+          request.onsuccess = () => {
+            const db = request.result,
+              tx = db.transaction(["drafts", "photos"]),
+              counts = {};
+            for (const name of ["drafts", "photos"]) {
+              const count = tx.objectStore(name).count();
+              count.onsuccess = () => (counts[name] = count.result);
+            }
+            tx.oncomplete = () => {
+              db.close();
+              resolve(counts);
+            };
+            tx.onerror = () => reject(tx.error);
+          };
+          request.onerror = () => reject(request.error);
+        }),
+    ),
+    { drafts: 0, photos: 0 },
+  );
   assert.equal(await page.locator(".store-card").count(), 1);
   assert.equal(await page.locator("[data-real-marker]").count(), 1);
   assert.equal(reports.at(-1).latitude, 51.14);
@@ -572,6 +771,115 @@ let debugPage;
   assert.equal(await page.locator("#save-location").isDisabled(), false);
   await page.keyboard.press("Escape");
   searchFail = false;
+  // Drafts are isolated by account and survive leaving/rejoining that account.
+  await page.locator("#store-select").selectOption("new");
+  await page.locator("#store-name").fill("Черновик участника");
+  await page.locator("#store-address").fill("Достык, 10");
+  await page
+    .locator("#report-description")
+    .fill("Личный черновик участника, не показывать другому аккаунту.");
+  await page.locator("#photo-input").setInputFiles(root + "/assets/milk.png");
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("сохранён"),
+  );
+  await page.locator(".remove-photo").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("сохранён"),
+  );
+  await page.reload({ waitUntil: "networkidle" });
+  assert.equal(await page.locator(".photo-preview").count(), 0);
+  assert.equal(
+    await page.locator("#store-name").inputValue(),
+    "Черновик участника",
+  );
+  await page.locator("#photo-input").setInputFiles(root + "/assets/milk.png");
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("сохранён"),
+  );
+  await page.locator("#account-button").click();
+  await page.locator("#sign-out").click();
+  await page.locator("#auth-email").waitFor();
+  await page.waitForFunction(
+    () =>
+      document.querySelector("#report-description").value === "" &&
+      document.querySelectorAll(".photo-preview").length === 0,
+  );
+  await login("admin@test.kz");
+  assert.equal(await page.locator("#report-description").inputValue(), "");
+  assert.equal(await page.locator(".photo-preview").count(), 0);
+  await page.locator("#close-account").click();
+  await page.locator("#store-select").selectOption(S);
+  await page
+    .locator("#report-description")
+    .fill("Отдельный черновик администратора.");
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("сохранён"),
+  );
+  await page.locator("#account-button").click();
+  await page.locator("#sign-out").click();
+  await page.locator("#auth-email").waitFor();
+  await login("pending@test.kz");
+  await page.locator("#close-account").click();
+  assert.equal(
+    await page.locator("#store-name").inputValue(),
+    "Черновик участника",
+  );
+  assert.equal(await page.locator(".photo-preview").count(), 1);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#discard-draft").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("удалён"),
+  );
+  await page.reload({ waitUntil: "networkidle" });
+  assert.equal(await page.locator("#report-description").inputValue(), "");
+  assert.equal(await page.locator(".photo-preview").count(), 0);
+  await page.locator("#account-button").click();
+  await page.locator("#sign-out").click();
+  await page.locator("#auth-email").waitFor();
+  await login("admin@test.kz");
+  await page.locator("#close-account").click();
+  assert.equal(await page.locator("#store-select").inputValue(), S);
+  assert.equal(
+    await page.locator("#report-description").inputValue(),
+    "Отдельный черновик администратора.",
+  );
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#discard-draft").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("удалён"),
+  );
+  historyFailure = true;
+  await page
+    .locator(".store-card")
+    .filter({ hasText: "Настоящий магазин" })
+    .click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector("#history-status")
+      .textContent.includes("Не удалось"),
+  );
+  historyFailure = false;
+  await page.locator("#history-retry").click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".history-entry").length === 20,
+  );
+  await page.locator("#close-detail").click();
+  historyMissing = true;
+  await page
+    .locator(".store-card")
+    .filter({ hasText: "Общий магазин" })
+    .click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector("#history-status")
+      .textContent.includes("history.sql"),
+  );
+  historyMissing = false;
+  await page.locator("#history-retry").click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".history-entry").length === 1,
+  );
+  await page.locator("#close-detail").click();
   publicFailure = true;
   await page.locator("#refresh-cloud").click();
   await page.waitForFunction(() =>
@@ -630,9 +938,26 @@ let debugPage;
   await page.locator("#map-tile-notice").waitFor({ state: "visible" });
   assert.equal(await page.locator(".store-card").count(), 2);
   assert.equal(await page.locator("[data-real-marker]").count(), 1);
+  await page.addInitScript(() => {
+    const open = IDBFactory.prototype.open;
+    IDBFactory.prototype.open = function (name, ...args) {
+      if (name === "vsg-report-drafts")
+        throw new DOMException("Storage unavailable", "QuotaExceededError");
+      return open.call(this, name, ...args);
+    };
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.locator("#store-select").selectOption("new");
+  await page
+    .locator("#report-description")
+    .fill("Этот черновик нельзя сохранить, потому что хранилище недоступно.");
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-panel").classList.contains("has-error"),
+  );
+  assert.equal(await page.locator("#submit-report").isDisabled(), false);
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: actual Supabase SDK against fixture HTTP API; public approved data; signed private photos; auth/signup/reset/error; account roles; upload and retry with stable ID/no duplicate upload; pending report stays private; real OSM map/attribution; address search/escaping/bounds; coordinate picker; saved coordinates; admin location correction; admin approval updates public map; membership approval; gallery; stale-data error; 320–1440 responsive layout.",
+    "PASS: actual Supabase SDK against fixture HTTP API; public approved data; signed private photos; auth/signup/reset/error; account roles; upload and retry with stable ID/no duplicate upload; pending report stays private; draft form/photos/location survive reload/offline; stable submission ID after reload; sent/deleted drafts removed; account draft isolation; storage error feedback; published history pagination/photos/privacy/retry; real OSM map/attribution; address search/escaping/bounds; coordinate picker; saved coordinates; admin location correction; admin approval updates public map; membership approval; gallery; stale-data error; 320–1440 responsive layout.",
   );
   await browser.close();
 })().catch(async (error) => {

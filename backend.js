@@ -171,6 +171,24 @@ window.VSGBackend = class VSGBackend {
     return { stores: await this.hydrate(rows, true), stats };
   }
 
+  async history(storeId, offset = 0) {
+    const pageSize = 20;
+    const rows = this.check(
+      await this.client
+        .from("vsg_public_history")
+        .select("*")
+        .eq("store_id", storeId)
+        .order("occurred_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(offset, offset + pageSize),
+    );
+    return {
+      reports: await this.hydrate(rows.slice(0, pageSize), true),
+      hasMore: rows.length > pageSize,
+    };
+  }
+
   async catalog() {
     return this.allRows("vsg_stores", "id,name,address,city", "id");
   }
@@ -233,7 +251,15 @@ window.VSGBackend = class VSGBackend {
     { storeId, name, address, result, description, photos, location },
     progress,
   ) {
+    const draftContext = window.VSGDrafts?.contextToken();
+    const checkContext = () => {
+      if (draftContext !== window.VSGDrafts?.contextToken())
+        throw new Error(
+          "Аккаунт изменился. Отправьте отчёт из своего аккаунта.",
+        );
+    };
     const session = await this.session();
+    checkContext();
     if (!session) throw new Error("Войдите в аккаунт, чтобы отправить отчёт.");
     const signature = JSON.stringify([
       session.user.id,
@@ -245,6 +271,7 @@ window.VSGBackend = class VSGBackend {
       location,
       photos.map((photo) => photo.id),
     ]);
+    if (!this.attempt) this.attempt = window.VSGDrafts?.savedAttempt();
     if (this.attempt?.signature !== signature)
       this.attempt = {
         id: crypto.randomUUID(),
@@ -252,8 +279,10 @@ window.VSGBackend = class VSGBackend {
         uploaded: new Set(),
       };
     const attempt = this.attempt;
+    await window.VSGDrafts?.setSubmission(attempt);
     const attachments = [];
     for (const [index, photo] of photos.entries()) {
+      checkContext();
       progress(`Загружаем фото ${index + 1} из ${photos.length}…`);
       const blob = await (await fetch(photo.url)).blob();
       const extension = {
@@ -285,6 +314,7 @@ window.VSGBackend = class VSGBackend {
       });
     }
     progress("Отправляем на проверку…");
+    checkContext();
     const response = await this.client.rpc(
       location ? "vsg_submit_located_report" : "vsg_submit_report",
       {

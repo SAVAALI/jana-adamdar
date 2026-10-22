@@ -284,19 +284,20 @@ function renderMarkers(visible) {
 
 function renderStoreOptions() {
   const previous = $("#store-select").value;
+  const catalog = [...(cloudMode ? cloudCatalog : stores)];
+  const draftStore = window.VSGDrafts?.selectedStore();
+  if (draftStore && !catalog.some((store) => store.id === draftStore.id))
+    catalog.push(draftStore);
   $("#store-select").innerHTML =
     '<option value="">Выберите магазин</option>' +
-    (cloudMode ? cloudCatalog : stores)
+    catalog
       .map(
         (store) =>
           `<option value="${escapeHTML(store.id)}">${escapeHTML(store.name)} · ${escapeHTML(store.address)}</option>`,
       )
       .join("") +
     '<option value="new">＋ Добавить новый магазин</option>';
-  if (
-    previous === "new" ||
-    (cloudMode ? cloudCatalog : stores).some((store) => store.id === previous)
-  )
+  if (previous === "new" || catalog.some((store) => store.id === previous))
     $("#store-select").value = previous;
 }
 
@@ -320,13 +321,15 @@ function openStore(id, opener = document.activeElement, override = null) {
   const photos = store.photos.filter((photo) => imageURL(photo));
   $("#store-detail").innerHTML = `
     <div class="detail-header"><p class="eyebrow">${store.demo ? "ДЕМО-ОТЧЁТ" : "ОТЧЁТ УЧАСТНИКА"} · АСТАНА</p><button class="icon-button detail-close" id="close-detail" aria-label="Закрыть карточку магазина">${icon("close")}</button><h2 id="detail-title">${escapeHTML(store.name)}</h2><p class="detail-address">${icon("pin")}${store.city ? escapeHTML(store.city) + ", " : ""}${escapeHTML(store.address)}</p></div>
-    <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}, ${displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p><h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : cloudMode ? "Фотографии участника команды. Точку на карте указывает участник или администратор. Адрес магазина указан выше." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
+    <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}, ${displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p><h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : cloudMode ? "Фотографии участника команды. Точку на карте указывает участник или администратор. Адрес магазина указан выше." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><section id="store-history" class="store-history" aria-label="История проверок магазина"></section><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
   $("#store-detail").dataset.storeId = id;
   if (!$("#store-dialog").open) $("#store-dialog").showModal();
   $("#close-detail").focus();
+  window.VSGHistory?.open(store);
 }
 
 function closeStore() {
+  window.VSGHistory?.clear();
   $("#store-dialog").close();
   const card = $(`[data-store="${CSS.escape(selectedId)}"]`);
   if (modalOpener?.isConnected) modalOpener.focus({ preventScroll: true });
@@ -374,6 +377,7 @@ async function validatePhoto(photo) {
 
 async function addPhotos(files) {
   if (readingPhotos) return;
+  const scope = window.VSGDrafts?.contextToken();
   const selected = [...files];
   const errors = [];
   const valid = [];
@@ -396,6 +400,11 @@ async function addPhotos(files) {
       .slice(0, available)
       .map(async (file) => validatePhoto(await readFile(file))),
   );
+  if (scope !== window.VSGDrafts?.contextToken()) {
+    readingPhotos = false;
+    syncSubmitButton();
+    return;
+  }
   for (const result of results) {
     if (result.status === "fulfilled") pendingPhotos.push(result.value);
     else
@@ -408,6 +417,7 @@ async function addPhotos(files) {
   $("#photo-error").textContent = errors.join(" ");
   $("#photo-input").value = "";
   renderPhotoPreviews();
+  window.VSGDrafts?.changed();
 }
 
 function openDatabase() {
@@ -482,9 +492,10 @@ async function submitReport(event) {
     return;
   }
   const status = $('input[name="result"]:checked').value;
-  const existing = (cloudMode ? cloudCatalog : stores).find(
-    (store) => store.id === $("#store-select").value,
-  );
+  const existing =
+    (cloudMode ? cloudCatalog : stores).find(
+      (store) => store.id === $("#store-select").value,
+    ) || window.VSGDrafts?.storeFallback($("#store-select").value);
   if (!isNew && !existing) {
     $("#form-error").textContent = "Выберите магазин из списка.";
     return;
@@ -562,6 +573,7 @@ async function submitReport(event) {
       String(button.dataset.filter === "all"),
     );
   });
+  await window.VSGDrafts?.clear({ resetForm: false });
   $("#report-form").reset();
   $("#character-count").textContent = "0 / 1000";
   pendingPhotos = [];
@@ -645,6 +657,7 @@ function bindEvents() {
     updateZoom();
   });
   $("#store-detail").addEventListener("click", (event) => {
+    window.VSGHistory?.handleClick(event);
     if (event.target.closest("#close-detail")) closeStore();
     const photo = event.target.closest("[data-photo-index]");
     if (photo) {
@@ -670,6 +683,7 @@ function bindEvents() {
   });
   $("#close-photo").addEventListener("click", () => $("#photo-dialog").close());
   $("#store-dialog").addEventListener("close", () => {
+    if (!$("#store-dialog").open) window.VSGHistory?.clear();
     const target = modalOpener?.isConnected
       ? modalOpener
       : $(`[data-store="${CSS.escape(selectedId)}"]`);
@@ -701,6 +715,7 @@ function bindEvents() {
     if (!remove) return;
     pendingPhotos.splice(Number(remove.dataset.removePhoto), 1);
     renderPhotoPreviews();
+    window.VSGDrafts?.changed();
   });
   const zone = $("#upload-zone");
   ["dragenter", "dragover"].forEach((type) =>
@@ -746,9 +761,11 @@ function bindEvents() {
 async function init() {
   if (cloudMode) {
     window.VSGMap?.init();
+    await window.VSGDrafts?.init();
     await window.VSGCloudUI.init();
     return;
   }
+  await window.VSGDrafts?.init();
   // Render immediately; unavailable/private browser storage must not block the UI.
   renderList();
   renderStoreOptions();

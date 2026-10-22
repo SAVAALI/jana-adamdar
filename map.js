@@ -145,6 +145,7 @@ window.VSGMap = (() => {
     $("#choose-location").textContent = draft
       ? "Изменить место на карте"
       : "Выбрать место на карте";
+    window.dispatchEvent(new Event("vsg:locationchange"));
   }
 
   function selectedStore() {
@@ -376,6 +377,7 @@ window.VSGMap = (() => {
     fit,
     valid,
     syncDraft,
+    restoreDraft: updateDraft,
     reset: () => updateDraft(null),
     value: () => (draft ? { ...draft } : null),
     zoom: (step) => {

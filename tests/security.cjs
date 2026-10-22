@@ -21,6 +21,12 @@ const assert = require("node:assert/strict");
   );
   await db.exec(setup);
   await db.exec(setup);
+  const historyMigration = fs.readFileSync(
+    nodePath.join(__dirname, "../supabase/history.sql"),
+    "utf8",
+  );
+  await db.exec(historyMigration);
+  await db.exec(historyMigration);
   const A = "11111111-1111-4111-8111-111111111111",
     B = "22222222-2222-4222-8222-222222222222",
     ADMIN = "33333333-3333-4333-8333-333333333333",
@@ -233,6 +239,86 @@ const assert = require("node:assert/strict");
   assert.equal(published.length, 1);
   assert.equal(published[0].latitude, 51.14);
   assert.equal(published[0].longitude, 71.43);
+  const storeId = published[0].store_id;
+  const historyIds = [
+    "11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "22222222-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "33333333-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  ];
+  for (let index = 0; index < historyIds.length; index++) {
+    await db.query(
+      "insert into public.vsg_reports(id,store_id,author_id,result,description,occurred_at,moderation_state,moderation_note) values($1,$2,$3,'clean',$4,now()-interval '1 day',$5,'Личная заметка администратора')",
+      [
+        historyIds[index],
+        storeId,
+        B,
+        `История проверки номер ${index}`,
+        ["approved", "pending", "rejected"][index],
+      ],
+    );
+  }
+  for (const viewer of [null, A, B, ADMIN]) {
+    const history = (
+      await run(
+        viewer,
+        "select * from public.vsg_public_history where store_id=$1 order by occurred_at desc,id desc",
+        [storeId],
+      )
+    ).rows;
+    assert.deepEqual(
+      history.map((row) => row.id),
+      [R, historyIds[0]],
+    );
+    assert.equal(
+      (
+        await run(
+          viewer,
+          "select * from public.vsg_public_reports where store_id=$1",
+          [storeId],
+        )
+      ).rows[0].id,
+      R,
+    );
+    for (const entry of history)
+      for (const privateField of [
+        "author_id",
+        "email",
+        "moderation_note",
+        "moderated_by",
+      ])
+        assert.ok(!(privateField in entry));
+  }
+  for (const row of (await run(null, "select * from public.vsg_public_history"))
+    .rows)
+    for (const photo of row.photos) assert.ok(!("filename" in photo));
+  await denied(
+    null,
+    "delete from public.vsg_public_history where store_id=$1",
+    [storeId],
+  );
+  await denied(
+    A,
+    "update public.vsg_public_history set description='Изменено' where id=$1",
+    [R],
+  );
+  await run(
+    ADMIN,
+    "select public.vsg_moderate_report($1,'rejected','Снято с публикации')",
+    [historyIds[0]],
+  );
+  assert.equal(
+    (
+      await run(
+        null,
+        "select * from public.vsg_public_history where store_id=$1",
+        [storeId],
+      )
+    ).rows.length,
+    1,
+  );
+  await db.query("delete from public.vsg_reports where id=any($1::uuid[])", [
+    historyIds,
+  ]);
   assert.ok(!("author_id" in published[0]));
   assert.ok(!("moderation_note" in published[0]));
   assert.ok(!("email" in published[0]));
@@ -258,6 +344,10 @@ const assert = require("node:assert/strict");
     ADMIN,
     "select public.vsg_moderate_report($1,'rejected','Нужны даты на фото')",
     [R],
+  );
+  assert.equal(
+    (await run(null, "select * from public.vsg_public_history")).rows.length,
+    0,
   );
   assert.equal(
     (await run(null, "select * from public.vsg_public_reports")).rows.length,
@@ -299,7 +389,7 @@ const assert = require("node:assert/strict");
     false,
   );
   console.log(
-    "PASS: repeatable schema/map migration; pending signup; admin bootstrap; role boundaries; private pending reports/photos/coordinates; approved-only public view/stats/photos/coordinates; admin-only location correction; coordinate bounds; atomic located submission; no personal fields; no direct mutation/escalation; immutable attached photos; orphan cleanup; atomic rejection; idempotent submission.",
+    "PASS: repeatable schema/map migration; pending signup; admin bootstrap; role boundaries; private pending reports/photos/coordinates; approved-only public view/stats/photos/coordinates; full approved history without private fields; history unpublication; history read-only; admin-only location correction; coordinate bounds; atomic located submission; no personal fields; no direct mutation/escalation; immutable attached photos; orphan cleanup; atomic rejection; idempotent submission.",
   );
   await db.close();
 })().catch((error) => {

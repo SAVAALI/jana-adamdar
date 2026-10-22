@@ -77,6 +77,7 @@ window.VSGCloudUI = (() => {
       cloudState.profile = profile;
       cloudCatalog = catalog;
       renderStoreOptions();
+      await window.VSGDrafts?.setOwner(profile?.user_id || "guest");
       updateAccess();
       if ($("#account-dialog").open && authMode !== "password") renderAccount();
     } catch (error) {
@@ -242,6 +243,13 @@ window.VSGCloudUI = (() => {
       openAccount();
       return;
     }
+    if (!navigator.onLine) {
+      await window.VSGDrafts?.flush();
+      $("#form-error").textContent =
+        "Нет интернета. Отправьте отчёт после восстановления соединения. Состояние черновика указано над формой.";
+      return;
+    }
+    const draftContext = window.VSGDrafts?.contextToken();
     submittingReport = true;
     const controls = [...$("#report-form").elements].map((control) => [
       control,
@@ -259,6 +267,8 @@ window.VSGCloudUI = (() => {
           button.textContent = text;
         },
       );
+      if (draftContext !== window.VSGDrafts?.contextToken()) return;
+      await window.VSGDrafts?.clear({ resetForm: false });
       $("#report-form").reset();
       $("#character-count").textContent = "0 / 1000";
       pendingPhotos = [];
@@ -270,6 +280,7 @@ window.VSGCloudUI = (() => {
       toast("Спасибо! Команда получила ваш отчёт.");
       await refreshIdentity();
     } catch (error) {
+      if (draftContext !== window.VSGDrafts?.contextToken()) return;
       $("#form-error").textContent =
         `${message(error)} Форма и фото сохранены на экране — можно повторить отправку.`;
     } finally {
@@ -409,6 +420,7 @@ window.VSGCloudUI = (() => {
           openAccount();
         }
         if (event === "SIGNED_OUT") {
+          await window.VSGDrafts?.setOwner("guest");
           cloudState.profile = null;
           authMode = "login";
           accountReports.clear();
