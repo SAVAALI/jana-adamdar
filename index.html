@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#6631c5" />
+    <meta
+      name="description"
+      content="Время и Стекло — молодёжная команда на страже свежести. Интерактивный прототип карты проверок и отчётов."
+    />
+    <title>Время и Стекло — молодёжь Астаны за свежесть</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="assets/fonts.css" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.18"
+      onerror="this.onerror=null;const fallback=document.createElement('script');fallback.src='assets/tailwind-browser.js';document.head.appendChild(fallback)"
+    ></script>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body class="selection:bg-[#ffe052] selection:text-[#6631c5]">
+    <svg
+      class="icon-library"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path d="M5 19 19 5M5 5h14v14" />
+      </symbol>
+      <symbol id="i-right" viewBox="0 0 24 24">
+        <path d="M5 12h14m-6-6 6 6-6 6" />
+      </symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24">
+        <path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z" />
+        <circle cx="12" cy="10" r="2.5" />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="10.5" cy="10.5" r="6.5" />
+        <path d="m16 16 4.5 4.5" />
+      </symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24">
+        <path
+          d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"
+        />
+        <circle cx="12" cy="13" r="4" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6" />
+      </symbol>
+      <symbol id="i-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M6 18 18 6" />
+      </symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24">
+        <path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z" />
+        <path d="m8 12 3 3 5-6" />
+      </symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24">
+        <path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5" />
+      </symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24">
+        <path d="M4 7h16M4 12h16M4 17h16" />
+      </symbol>
+      <symbol id="i-store" viewBox="0 0 24 24">
+        <path
+          d="M4 10v10h16V10M3 10l2-6h14l2 6M3 10c0 3 4 3 4 0 0 3 5 3 5 0 0 3 5 3 5 0 0 3 4 3 4 0M9 20v-6h6v6"
+        />
+      </symbol>
+    </svg>
+
+    <div class="announcement">
+      <span class="little-star">✦</span> АСТАНА, СВЕЖЕСТЬ — ЭТО НАША ТЕМА!
+      <span class="little-star">✦</span>
+    </div>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="#home" aria-label="Время и Стекло — на главную">
+          <span class="brand-crest"
+            ><svg viewBox="0 0 48 54" fill="none" aria-hidden="true">
+              <path
+                d="M3 3h42v29c0 10-21 19-21 19S3 42 3 32V3Z"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M14 12h20M14 38h20M17 12c0 8 14 13 14 26M31 12c0 8-14 13-14 26"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <path d="m20 34 4-5 4 5h-8Z" fill="currentColor" /></svg
+          ></span>
+          <span class="brand-copy"
+            >ВРЕМЯ <span class="brand-amp">и</span> СТЕКЛО<small
+              >МОЛОДЁЖЬ АСТАНЫ В ДЕЛЕ</small
+            ></span
+          >
+        </a>
+        <nav class="desktop-nav" aria-label="Основная навигация">
+          <a href="#raids" class="nav-link">Карта рейдов</a
+          ><a href="#report" class="nav-link">Загрузка фото</a
+          ><a href="#about" class="nav-link">О команде</a>
+        </nav>
+        <a class="button button-violet header-cta" href="#report"
+          >Я в деле <svg class="icon"><use href="#i-plus" /></svg
+        ></a>
+        <button
+          class="icon-button mobile-menu-button"
+          id="menu-button"
+          aria-label="Открыть меню"
+          aria-expanded="false"
+          aria-controls="mobile-nav"
+        >
+          <svg class="icon"><use href="#i-menu" /></svg>
+        </button>
+      </div>
+      <nav
+        id="mobile-nav"
+        class="mobile-nav"
+        aria-label="Мобильная навигация"
+        hidden
+      >
+        <a href="#raids">Карта рейдов</a><a href="#report">Загрузить отчёт</a
+        ><a href="#about">О команде</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero container" id="home">
+        <div class="hero-copy">
+          <div class="eyebrow">
+            <span class="tiny-square"></span> АСТАНА. МОЛОДЁЖЬ. ДЕЙСТВИЕ.
+          </div>
+          <h1>Сроки вышли?<br /><em>Мы — на месте.</em></h1>
+          <p class="hero-description">
+            Мы — «Время и Стекло», молодёжная команда Астаны. Проверяем сроки
+            годности, фиксируем факты и помогаем делать покупки спокойнее.
+            Свежесть — наша общая забота.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-purple" href="#raids"
+              >Смотреть карту <svg class="icon"><use href="#i-arrow" /></svg></a
+            ><a class="button button-yellow" href="#report"
+              >Добавить отчёт <svg class="icon"><use href="#i-plus" /></svg
+            ></a>
+          </div>
+          <div class="hero-note">
+            <span class="small-avatars"
+              ><span class="avatar-initial avatar-one">АК</span
+              ><span class="avatar-initial avatar-two">МД</span
+              ><span>+22</span></span
+            ><span>Вместе замечаем больше. Присоединяйся!</span>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="photo-outline"></div>
+          <figure class="hero-photo">
+            <img
+              src="assets/team-astana.png"
+              alt="Иллюстрация рейда: молодые волонтёры в жёлто-фиолетовой форме проверяют маркировку товара"
+              width="1200"
+              height="900"
+              fetchpriority="high"
+            />
+            <div class="photo-shade"></div>
+            <span class="photo-source-label">ИЛЛЮСТРАЦИЯ</span>
+            <figcaption>
+              <span class="photo-caption-label">НЕ ПРОХОДИМ МИМО</span
+              ><span class="photo-caption-title"
+                >Смотрим на дату.<br />Думаем о людях.</span
+              >
+            </figcaption>
+          </figure>
+          <div class="campus-stamp" aria-label="Свежесть — это норма">
+            <span>СВЕЖЕСТЬ —</span
+            ><svg class="stamp-shield"><use href="#i-shield" /></svg
+            ><strong>ЭТО<br />НОРМА</strong><small>ВРЕМЯ И СТЕКЛО</small>
+            <div class="stamp-stars">★ ★ ★</div>
+          </div>
+          <span class="photo-ticket"
+            ><span class="status-dot"></span> АСТАНА В ДЕЛЕ</span
+          >
+        </div>
+      </section>
+
+      <section class="container" aria-label="Команда в цифрах">
+        <div class="stats-bar">
+          <div class="stat">
+            <strong id="stat-stores"
+              >128<span
+                ><svg class="icon"><use href="#i-arrow" /></svg></span></strong
+            ><span>магазинов проверено</span>
+          </div>
+          <div class="stat">
+            <strong id="stat-issues"
+              >36<span
+                ><svg class="icon"><use href="#i-arrow" /></svg></span></strong
+            ><span>нарушений зафиксировано</span>
+          </div>
+          <div class="stat">
+            <strong>24<span>✦</span></strong
+            ><span>участника команды</span>
+          </div>
+          <div class="stats-message">
+            <svg class="icon"><use href="#i-shield" /></svg>
+            <p>Не ждём перемен.<br /><strong>Начинаем с себя.</strong></p>
+          </div>
+        </div>
+        <p class="demo-stats-note">Демонстрационные данные прототипа</p>
+      </section>
+
+      <section class="raids-section container" id="raids">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">ГОРОД ПОД ПРИСМОТРОМ</p>
+            <h2>Карта свежести<span class="heading-dot">.</span></h2>
+          </div>
+          <a class="text-link" href="#report"
+            >Внести свой вклад <svg class="icon"><use href="#i-arrow" /></svg
+          ></a>
+        </div>
+        <div class="map-toolbar">
+          <div class="filters" role="group" aria-label="Фильтр результатов">
+            <button
+              class="filter-button active"
+              data-filter="all"
+              aria-pressed="true"
+            >
+              Все точки <span id="all-count">8</span></button
+            ><button
+              class="filter-button"
+              data-filter="violation"
+              aria-pressed="false"
+            >
+              <span class="status-dot violet"></span>Есть нарушения</button
+            ><button
+              class="filter-button"
+              data-filter="clean"
+              aria-pressed="false"
+            >
+              <span class="status-dot"></span>Всё чисто
+            </button>
+          </div>
+          <label class="search-field"
+            ><svg class="icon"><use href="#i-search" /></svg
+            ><input
+              id="store-search"
+              type="search"
+              placeholder="Магазин или адрес"
+              aria-label="Поиск магазина по названию или адресу"
+          /></label>
+        </div>
+        <div class="map-layout">
+          <div
+            class="map-view"
+            id="map-view"
+            aria-label="Стилизованная интерактивная карта проверок в Астане"
+          >
+            <div class="map-plane" id="map-plane">
+              <img
+                class="map-art"
+                src="assets/map.svg"
+                alt=""
+                draggable="false"
+              />
+              <div id="map-markers"></div>
+            </div>
+            <div class="map-city">
+              <svg class="icon"><use href="#i-pin" /></svg> Астана
+              <span>ДЕМО-КАРТА</span>
+            </div>
+            <div class="map-zoom">
+              <button id="zoom-in" aria-label="Приблизить карту">+</button
+              ><button id="zoom-out" aria-label="Отдалить карту">−</button>
+            </div>
+            <div class="map-legend">
+              <span><i class="status-dot violet"></i> Есть нарушения</span
+              ><span><i class="status-dot"></i> Всё чисто</span>
+            </div>
+            <span class="map-credit">СХЕМАТИЧНАЯ КАРТА · НЕ ДЛЯ НАВИГАЦИИ</span>
+          </div>
+          <aside class="store-panel" aria-label="Список проверенных магазинов">
+            <div class="store-panel-heading">
+              <h3>Последние проверки</h3>
+              <span id="result-count" aria-live="polite">8 точек</span>
+            </div>
+            <div id="store-list" class="store-list"></div>
+            <div class="panel-footer">
+              <span class="live-dot"></span> Свежие отчёты — общая картина
+            </div>
+          </aside>
+        </div>
+        <p class="map-disclaimer">
+          <svg class="icon"><use href="#i-clock" /></svg> Статус отражает
+          результат последней проверки. Все магазины, адреса и нарушения в демо
+          вымышлены.
+        </p>
+      </section>
+
+      <section class="report-section" id="report">
+        <div class="container report-layout">
+          <div class="report-intro">
+            <p class="eyebrow yellow">КАЖДЫЙ ОТЧЁТ ИМЕЕТ ЗНАЧЕНИЕ</p>
+            <h2>Увидел?<br /><em>Зафиксируй.</em></h2>
+            <p class="report-description">
+              Хорошие перемены начинаются<br />с простого внимания к срокам.
+            </p>
+            <ol class="report-steps">
+              <li>
+                <span>01</span>
+                <div>
+                  <strong>Выбери магазин</strong>
+                  <p>Найди точку на карте или добавь новую.</p>
+                </div>
+              </li>
+              <li>
+                <span>02</span>
+                <div>
+                  <strong>Добавь факты</strong>
+                  <p>Фото товара, срока годности или чека.</p>
+                </div>
+              </li>
+              <li>
+                <span>03</span>
+                <div>
+                  <strong>Поделись результатом</strong>
+                  <p>Твой отчёт появится на нашей карте.</p>
+                </div>
+              </li>
+            </ol>
+            <div class="report-motto">
+              <span>✦</span> СВЕЖЕСТЬ НАЧИНАЕТСЯ С НАС <span>✦</span>
+            </div>
+          </div>
+          <form id="report-form" class="report-form">
+            <div class="form-heading">
+              <h3>Новый отчёт</h3>
+              <span class="form-tag">С МЕСТА СОБЫТИЙ</span>
+            </div>
+            <label class="field-label" for="store-select"
+              >Магазин <span>*</span></label
+            >
+            <div class="select-wrap">
+              <svg class="icon"><use href="#i-store" /></svg
+              ><select id="store-select" name="store" required>
+                <option value="">Выберите магазин</option></select
+              ><span class="select-chevron">⌄</span>
+            </div>
+            <div id="new-store-fields" class="new-store-fields" hidden>
+              <label class="field-label" for="store-name"
+                >Название магазина <span>*</span></label
+              ><input
+                class="text-input"
+                id="store-name"
+                name="storeName"
+                maxlength="80"
+                placeholder="Например, «Лавка у дома»"
+              /><label class="field-label" for="store-address"
+                >Адрес в Астане <span>*</span></label
+              ><input
+                class="text-input"
+                id="store-address"
+                name="address"
+                maxlength="160"
+                placeholder="Улица, номер дома"
+              />
+            </div>
+            <fieldset class="result-fieldset">
+              <legend class="field-label">Результат проверки</legend>
+              <div class="status-options">
+                <label
+                  ><input
+                    type="radio"
+                    name="result"
+                    value="violation"
+                    checked
+                  /><span
+                    ><span class="status-dot violet"></span>Есть просрочка</span
+                  ></label
+                ><label
+                  ><input type="radio" name="result" value="clean" /><span
+                    ><svg class="icon"><use href="#i-check" /></svg>Всё
+                    чисто</span
+                  ></label
+                >
+              </div>
+            </fieldset>
+            <label class="field-label" for="photo-input"
+              >Фотографии <span>*</span><small>до 6 фото</small></label
+            ><label class="upload-zone" id="upload-zone" for="photo-input"
+              ><span class="upload-icon"
+                ><svg class="icon"><use href="#i-camera" /></svg></span
+              ><span
+                ><strong>Нажмите или перетащите фото</strong
+                ><small>JPG, PNG, WEBP · до 8 МБ каждое</small></span
+              ><svg class="icon upload-arrow"><use href="#i-upload" /></svg
+              ><input
+                type="file"
+                id="photo-input"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                aria-describedby="photo-error"
+            /></label>
+            <div id="photo-previews" class="photo-previews"></div>
+            <p class="field-error" id="photo-error" role="alert"></p>
+            <label class="field-label" for="report-description"
+              >Что удалось заметить? <span>*</span></label
+            >
+            <div class="textarea-wrap">
+              <textarea
+                id="report-description"
+                name="description"
+                rows="3"
+                maxlength="1000"
+                minlength="10"
+                required
+                placeholder="Какой товар, дата на упаковке, на сколько дней истёк срок…"
+              ></textarea
+              ><span id="character-count">0 / 1000</span>
+            </div>
+            <p id="form-error" class="field-error" role="alert"></p>
+            <button
+              class="button button-violet submit-button"
+              id="submit-report"
+              type="submit"
+            >
+              Отправить отчёт на сайт
+              <svg class="icon"><use href="#i-arrow" /></svg>
+            </button>
+            <p class="form-note">
+              <svg class="icon"><use href="#i-shield" /></svg> Прототип: отчёты
+              и фото хранятся только в этом браузере.
+            </p>
+            <div
+              id="form-success"
+              class="form-success"
+              role="status"
+              hidden
+            ></div>
+          </form>
+        </div>
+      </section>
+
+      <div class="freshness-ribbon" aria-hidden="true">
+        <div>
+          СВЕЖЕСТЬ — ЭТО НОРМА <span>✦</span> АСТАНА В ДЕЛЕ <span>✦</span> НЕ
+          ПРОХОДИ МИМО <span>✦</span> СВЕЖЕСТЬ — ЭТО НОРМА <span>✦</span> АСТАНА
+          В ДЕЛЕ
+        </div>
+      </div>
+      <section class="about-section container" id="about">
+        <div class="about-heading">
+          <div>
+            <p class="eyebrow">НЕ ПРОХОДИМ МИМО</p>
+            <h2>У нас разный характер.<br />И одна <em>общая цель.</em></h2>
+          </div>
+          <p>
+            «Время и Стекло» — это молодёжь Астаны,<br class="desktop-break" />
+            которым важно, что лежит на полках.<br class="desktop-break" />
+            Мы за честные проверки, открытые факты<br class="desktop-break" />
+            и уважение друг к другу.
+          </p>
+        </div>
+        <div class="values-grid">
+          <article>
+            <span class="value-number">01 /</span
+            ><svg class="icon"><use href="#i-search" /></svg>
+            <h3>Смотрим внимательно</h3>
+            <p>Проверяем сроки, условия хранения<br />и состояние упаковки.</p>
+          </article>
+          <article>
+            <span class="value-number">02 /</span
+            ><svg class="icon"><use href="#i-camera" /></svg>
+            <h3>Фиксируем честно</h3>
+            <p>
+              Только факты и фотографии.<br />Без громких слов и поспешных
+              выводов.
+            </p>
+          </article>
+          <article>
+            <span class="value-number">03 /</span
+            ><svg class="icon"><use href="#i-shield" /></svg>
+            <h3>Меняем вместе</h3>
+            <p>
+              Замечаем хорошее и помогаем<br />делать наш город немного лучше.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="footer-brand" href="#home"
+          >ВРЕМЯ <i>и</i> СТЕКЛО<span>СВЕЖИЙ ВЗГЛЯД. ЧЕСТНЫЙ ПОДХОД.</span></a
+        >
+        <p>
+          © <span id="current-year">2026</span> · Молодёжная команда ·
+          Астана<br /><span>Интерактивный демонстрационный прототип</span>
+        </p>
+        <a class="back-top" href="#home">Наверх <span>↑</span></a>
+      </div>
+    </footer>
+    <dialog
+      id="store-dialog"
+      class="store-dialog"
+      aria-labelledby="detail-title"
+    >
+      <div id="store-detail"></div>
+    </dialog>
+    <dialog
+      id="photo-dialog"
+      class="photo-dialog"
+      aria-label="Просмотр фотографии"
+    >
+      <button
+        class="icon-button lightbox-close"
+        id="close-photo"
+        aria-label="Закрыть фотографию"
+      >
+        <svg class="icon"><use href="#i-close" /></svg></button
+      ><img id="lightbox-image" alt="Фотография из отчёта" />
+      <p id="lightbox-caption"></p>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

@@ -1,0 +1,132 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="1000"
+  height="650"
+  viewBox="0 0 1000 650"
+  preserveAspectRatio="none"
+>
+  <defs>
+    <pattern
+      id="blocks"
+      width="158"
+      height="112"
+      patternUnits="userSpaceOnUse"
+      patternTransform="rotate(-13)"
+    >
+      <rect width="158" height="112" fill="#f0edf7" />
+      <rect x="9" y="10" width="60" height="40" rx="3" fill="#e5ddef" />
+      <rect x="79" y="11" width="65" height="39" rx="3" fill="#e3dbed" />
+      <rect x="9" y="61" width="38" height="36" rx="3" fill="#e4dced" />
+      <rect x="57" y="61" width="87" height="36" rx="3" fill="#e7e0f0" />
+      <path d="M0 106H158M151 0V112" stroke="#ffffff" stroke-width="11" />
+      <path d="M73 4V54M5 55H148" stroke="#faf8ff" stroke-width="5" />
+    </pattern>
+  </defs>
+  <rect width="1000" height="650" fill="url(#blocks)" />
+  <path
+    d="M693-40c-30 100-9 154 26 218s-1 142-25 213-41 120-15 259"
+    fill="none"
+    stroke="#c5b7e5"
+    stroke-width="15"
+  />
+  <path
+    d="m758 60 152-35 32 130-158 36Z"
+    fill="#e4dcf2"
+    stroke="#eee8f8"
+    stroke-width="6"
+  />
+  <path
+    d="m778 89 134-29m-126 58 133-29m-125 59 132-31m-96-83 29 128m25-141 30 129"
+    stroke="#f6f1ff"
+    stroke-width="3"
+  />
+  <path
+    d="m77 368 161-37 27 122-160 36Z"
+    fill="#e4dcf2"
+    stroke="#eee8f8"
+    stroke-width="6"
+  />
+  <path
+    d="m92 394 154-35m-144 77 153-35m-96-56 27 128"
+    stroke="#eee8f8"
+    stroke-width="4"
+  />
+  <path d="m404 548 117-28 22 96-117 27Z" fill="#e6d9fa" />
+  <g fill="none" stroke-linecap="round">
+    <path
+      d="M-30 310 1040 64M-20 510 1030 268M-30 715 1050 466M242-40 411 700M534-40 703 700M853-40 1022 700"
+      stroke="#ddd3ec"
+      stroke-width="23"
+    />
+    <path
+      d="M-30 310 1040 64M-20 510 1030 268M-30 715 1050 466M242-40 411 700M534-40 703 700M853-40 1022 700"
+      stroke="#ffffff"
+      stroke-width="17"
+    />
+    <path
+      d="M-30 310 1040 64M-20 510 1030 268M-30 715 1050 466"
+      stroke="#ffe478"
+      stroke-width="3"
+    />
+  </g>
+  <g
+    font-family="Arial,sans-serif"
+    font-size="12"
+    fill="#aa98bd"
+    letter-spacing=".8"
+  >
+    <text transform="translate(350 218) rotate(-13)">ПРОСПЕКТ МАНГИЛИК ЕЛ</text>
+    <text transform="translate(430 404) rotate(-13)">УЛИЦА ДОСТЫК</text>
+    <text transform="translate(492 598) rotate(-13)">
+      ПРОСПЕКТ КАБАНБАЙ БАТЫРА
+    </text>
+    <text transform="translate(289 90) rotate(77)">ПРОСПЕКТ ТУРАН</text>
+    <text transform="translate(620 278) rotate(77)">УЛИЦА САРАЙШЫК</text>
+    <text transform="translate(920 212) rotate(77)">УЛИЦА СЫГАНАК</text>
+    <text
+      transform="translate(99 423) rotate(-13)"
+      font-size="10"
+      fill="#ad9bc0"
+    >
+      СКВЕР
+    </text>
+    <text
+      transform="translate(796 125) rotate(-13)"
+      font-size="10"
+      fill="#ad9bc0"
+    >
+      ПАРК ОТДЫХА
+    </text>
+  </g>
+  <text
+    x="715"
+    y="565"
+    font-family="Arial,sans-serif"
+    font-size="11"
+    fill="#b09ac8"
+    transform="rotate(-75 715 565)"
+  >
+    РЕКА ЕСИЛЬ
+  </text>
+  <g fill="#d0bddf">
+    <circle cx="113" cy="386" r="6" />
+    <circle cx="223" cy="365" r="6" />
+    <circle cx="124" cy="460" r="6" />
+    <circle cx="238" cy="435" r="6" />
+    <circle cx="791" cy="91" r="6" />
+    <circle cx="900" cy="62" r="6" />
+    <circle cx="808" cy="160" r="6" />
+    <circle cx="918" cy="137" r="6" />
+  </g>
+  <text
+    x="40"
+    y="576"
+    font-family="Georgia,serif"
+    font-size="28"
+    fill="#c2b0d3"
+    letter-spacing="5"
+    transform="rotate(-13 40 576)"
+  >
+    ЕСИЛЬ
+  </text>
+</svg>
