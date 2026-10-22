@@ -311,6 +311,21 @@ function selectMarker(id) {
   }
 }
 
+function storeDirections(store) {
+  if (store.demo) return "";
+  const hasPoint = window.VSGMap?.valid(store);
+  const query = [store.name, store.address, store.city || "Астана"]
+    .filter(Boolean)
+    .join(", ");
+  if (!hasPoint && !store.address) return "";
+  const destination = hasPoint ? `${store.latitude},${store.longitude}` : query;
+  const google = new URL("https://www.google.com/maps/dir/");
+  google.searchParams.set("api", "1");
+  google.searchParams.set("destination", destination);
+  const twoGis = `https://2gis.kz/astana/search/${encodeURIComponent(query)}`;
+  return `<div class="detail-directions"><div class="detail-direction-links"><a class="button button-yellow" id="store-directions" href="${escapeHTML(google.href)}" target="_blank" rel="noopener noreferrer" aria-describedby="store-directions-note">${icon("pin")}Построить маршрут ${icon("arrow")}</a><a class="text-link" id="store-2gis" href="${escapeHTML(twoGis)}" target="_blank" rel="noopener noreferrer">Найти в 2ГИС ${icon("arrow")}</a></div><p id="store-directions-note">${hasPoint ? "Google Карты · до отмеченной на карте точки." : "Google Карты · по адресу. Проверьте найденную точку в навигаторе."}</p></div>`;
+}
+
 function openStore(id, opener = document.activeElement, override = null) {
   const store = override || stores.find((item) => item.id === id);
   if (!store) return;
@@ -320,7 +335,7 @@ function openStore(id, opener = document.activeElement, override = null) {
   currentDetailStore = store;
   const photos = store.photos.filter((photo) => imageURL(photo));
   $("#store-detail").innerHTML = `
-    <div class="detail-header"><p class="eyebrow">${store.demo ? "ДЕМО-ОТЧЁТ" : "ОТЧЁТ УЧАСТНИКА"} · АСТАНА</p><button class="icon-button detail-close" id="close-detail" aria-label="Закрыть карточку магазина">${icon("close")}</button><h2 id="detail-title">${escapeHTML(store.name)}</h2><p class="detail-address">${icon("pin")}${store.city ? escapeHTML(store.city) + ", " : ""}${escapeHTML(store.address)}</p></div>
+    <div class="detail-header"><p class="eyebrow">${store.demo ? "ДЕМО-ОТЧЁТ" : "ОТЧЁТ УЧАСТНИКА"} · АСТАНА</p><button class="icon-button detail-close" id="close-detail" aria-label="Закрыть карточку магазина">${icon("close")}</button><h2 id="detail-title">${escapeHTML(store.name)}</h2><p class="detail-address">${icon("pin")}${store.city ? escapeHTML(store.city) + ", " : ""}${escapeHTML(store.address)}</p>${storeDirections(store)}</div>
     <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}${store.checkedDate ? "" : ", " + displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p>${window.VSGProducts.render(store)}<h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : cloudMode ? "Фотографии участника команды. Точку на карте указывает участник или администратор. Адрес магазина указан выше." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><section id="store-history" class="store-history" aria-label="История проверок магазина"></section><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
   $("#store-detail").dataset.storeId = id;
   if (!$("#store-dialog").open) $("#store-dialog").showModal();
