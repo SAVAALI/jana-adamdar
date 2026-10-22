@@ -30,7 +30,7 @@ window.VSGMap = (() => {
   const coordinates = (point) =>
     valid(point)
       ? `${point.latitude.toFixed(6)}, ${point.longitude.toFixed(6)}`
-      : "Место ещё не выбрано";
+      : tr("Место ещё не выбрано");
   const searchCache = new Map();
 
   function tiles(target, notice) {
@@ -45,8 +45,12 @@ window.VSGMap = (() => {
     ).addTo(target);
     tileLayer.on("tileerror", () => {
       errors++;
-      notice.textContent =
-        "Не удалось загрузить улицы. Проверьте интернет; адреса и отчёты доступны в списке.";
+      window.VSGI18n.text(
+        notice,
+        tr(
+          "Не удалось загрузить улицы. Проверьте интернет; адреса и отчёты доступны в списке.",
+        ),
+      );
       notice.hidden = false;
     });
     tileLayer.on("loading", () => {
@@ -72,7 +76,12 @@ window.VSGMap = (() => {
   function pin(status, selected = false) {
     return L.divIcon({
       className: "vsg-leaflet-icon",
-      html: `<span class="real-pin ${status === "violation" ? "violation" : "clean"} ${selected ? "selected" : ""}">${icon(status === "violation" ? "store" : "check")}</span>`,
+      html: html`<span
+        class="real-pin ${status === "violation"
+          ? "violation"
+          : "clean"} ${selected ? "selected" : ""}"
+        >${icon(status === "violation" ? "store" : "check")}</span
+      >`,
       iconSize: [38, 44],
       iconAnchor: [19, 42],
       popupAnchor: [0, -36],
@@ -87,19 +96,19 @@ window.VSGMap = (() => {
       const marker = L.marker([store.latitude, store.longitude], {
         icon: pin(store.status, store.id === selectedId),
         title: store.name,
-        alt: `${store.name}: ${store.status === "clean" ? "всё чисто" : "есть нарушения"}`,
+        alt: `${store.name}: ${store.status === "clean" ? tr("всё чисто") : tr("есть нарушения")}`,
         keyboard: true,
         riseOnHover: true,
       }).addTo(layer);
       const popup = document.createElement("div");
       popup.className = "real-popup";
       const title = document.createElement("strong");
-      title.textContent = store.name;
+      window.VSGI18n.text(title, store.name);
       const address = document.createElement("p");
-      address.textContent = store.address;
+      window.VSGI18n.text(address, store.address);
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = "Фото и отчёт →";
+      window.VSGI18n.text(button, tr("Фото и отчёт →"));
       button.addEventListener("click", () => openStore(store.id, button));
       popup.append(title, address, button);
       marker.bindPopup(popup);
@@ -107,9 +116,11 @@ window.VSGMap = (() => {
         selectMarker(store.id);
       });
       marker.getElement()?.setAttribute("data-real-marker", store.id);
-      marker
-        .getElement()
-        ?.setAttribute("aria-label", `${store.name}. Открыть место проверки`);
+      window.VSGI18n.attr(
+        marker.getElement(),
+        "aria-label",
+        tr`${store.name}. Открыть место проверки`,
+      );
       if (store.id === selectedId) marker.openPopup();
       if (store.id === selectedId && lastSelected !== selectedId) {
         map.panTo(marker.getLatLng());
@@ -122,9 +133,12 @@ window.VSGMap = (() => {
     lastSelected = selectedId;
     const missing = visible.length - points.length;
     $("#map-location-notice").hidden = !missing;
-    $("#map-location-notice").textContent = missing
-      ? `Без места на карте: ${missing}. Адреса и отчёты доступны справа. Администратор может указать место в кабинете.`
-      : "";
+    window.VSGI18n.text(
+      $("#map-location-notice"),
+      missing
+        ? tr`Без места на карте: ${missing}. Адреса и отчёты доступны справа. Администратор может указать место в кабинете.`
+        : "",
+    );
   }
 
   function fit(points = filteredStores().filter(valid)) {
@@ -141,10 +155,11 @@ window.VSGMap = (() => {
     draft = valid(point)
       ? { latitude: point.latitude, longitude: point.longitude }
       : null;
-    $("#location-value").textContent = coordinates(draft);
-    $("#choose-location").textContent = draft
-      ? "Изменить место на карте"
-      : "Выбрать место на карте";
+    window.VSGI18n.text($("#location-value"), coordinates(draft));
+    window.VSGI18n.text(
+      $("#choose-location"),
+      draft ? tr("Изменить место на карте") : tr("Выбрать место на карте"),
+    );
     window.dispatchEvent(new Event("vsg:locationchange"));
   }
 
@@ -162,8 +177,10 @@ window.VSGMap = (() => {
 
   function choose(point) {
     if (!valid(point)) {
-      $("#location-search-status").textContent =
-        "Выберите место в Астане и ближайших окрестностях.";
+      window.VSGI18n.text(
+        $("#location-search-status"),
+        tr("Выберите место в Астане и ближайших окрестностях."),
+      );
       if (pickerMarker && valid(picked))
         pickerMarker.setLatLng([picked.latitude, picked.longitude]);
       return;
@@ -178,15 +195,19 @@ window.VSGMap = (() => {
       const position = pickerMarker.getLatLng();
       choose({ latitude: position.lat, longitude: position.lng });
     });
-    $("#picked-coordinates").textContent = coordinates(picked);
+    window.VSGI18n.text($("#picked-coordinates"), coordinates(picked));
     $("#save-location").disabled = false;
-    $("#location-search-status").textContent =
-      "Проверьте точку. Её можно передвинуть или поставить кликом по карте.";
+    window.VSGI18n.text(
+      $("#location-search-status"),
+      tr(
+        "Проверьте точку. Её можно передвинуть или поставить кликом по карте.",
+      ),
+    );
   }
 
   function openPicker(point, address, save) {
     if (!window.L) {
-      toast("Карта не загрузилась. Обновите страницу.");
+      toast(tr("Карта не загрузилась. Обновите страницу."));
       return;
     }
     opener = document.activeElement;
@@ -194,15 +215,28 @@ window.VSGMap = (() => {
     picked = null;
     $("#location-search").value = address || "";
     $("#location-results").replaceChildren();
-    $("#location-search-status").textContent =
-      "Найдите адрес или нажмите на нужное здание. Точку подтверждаете вы.";
-    $("#picked-coordinates").textContent = "Выберите точку на карте";
+    window.VSGI18n.text(
+      $("#location-search-status"),
+      tr("Найдите адрес или нажмите на нужное здание. Точку подтверждаете вы."),
+    );
+    window.VSGI18n.text(
+      $("#picked-coordinates"),
+      tr("Выберите точку на карте"),
+    );
     $("#save-location").disabled = true;
-    $("#location-error").textContent = "";
+    window.VSGI18n.text($("#location-error"), "");
     $("#location-dialog").showModal();
     if (!picker) {
       picker = createMap("location-map", 13);
       L.control.zoom({ position: "topright" }).addTo(picker);
+      for (const [selector, label] of [
+        [".leaflet-control-zoom-in", "Приблизить карту"],
+        [".leaflet-control-zoom-out", "Отдалить карту"],
+      ]) {
+        const control = $(selector, $("#location-map"));
+        window.VSGI18n.attr(control, "title", tr(label));
+        window.VSGI18n.attr(control, "aria-label", tr(label));
+      }
       tiles(picker, $("#picker-tile-notice"));
       picker.on("click", (event) =>
         choose({ latitude: event.latlng.lat, longitude: event.latlng.lng }),
@@ -225,7 +259,10 @@ window.VSGMap = (() => {
   async function search() {
     const query = $("#location-search").value.trim();
     if (query.length < 3) {
-      $("#location-search-status").textContent = "Введите улицу и номер дома.";
+      window.VSGI18n.text(
+        $("#location-search-status"),
+        tr("Введите улицу и номер дома."),
+      );
       return;
     }
     if (Date.now() - lastSearch < 1200) return;
@@ -237,7 +274,10 @@ window.VSGMap = (() => {
     const timeout = setTimeout(() => controller.abort(), 12000);
     $("#location-search-button").disabled = true;
     $("#location-results").replaceChildren();
-    $("#location-search-status").textContent = "Ищем адрес в Астане…";
+    window.VSGI18n.text(
+      $("#location-search-status"),
+      tr("Ищем адрес в Астане…"),
+    );
     try {
       let results = searchCache.get(query);
       if (!results) {
@@ -276,20 +316,27 @@ window.VSGMap = (() => {
       for (const point of results) {
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = point.label;
+        window.VSGI18n.text(button, point.label);
         button.addEventListener("click", () => {
           choose(point);
           picker.setView([point.latitude, point.longitude], 18);
         });
         $("#location-results").append(button);
       }
-      $("#location-search-status").textContent = results.length
-        ? "Выберите подходящий результат и проверьте здание на карте."
-        : "Адрес не найден. Попробуйте другое написание или поставьте точку на карте вручную.";
+      window.VSGI18n.text(
+        $("#location-search-status"),
+        results.length
+          ? tr("Выберите подходящий результат и проверьте здание на карте.")
+          : tr(
+              "Адрес не найден. Попробуйте другое написание или поставьте точку на карте вручную.",
+            ),
+      );
     } catch {
       if (request === searchRequest)
-        $("#location-search-status").textContent =
-          "Поиск адресов недоступен. Можно выбрать место кликом по карте.";
+        window.VSGI18n.text(
+          $("#location-search-status"),
+          tr("Поиск адресов недоступен. Можно выбрать место кликом по карте."),
+        );
     } finally {
       clearTimeout(timeout);
       if (request === searchRequest)
@@ -302,16 +349,21 @@ window.VSGMap = (() => {
     $("#map-plane").hidden = true;
     $("#real-map").hidden = false;
     $("#location-fields").hidden = false;
-    $(".map-city > span").textContent = "OPENSTREETMAP";
+    window.VSGI18n.text($(".map-city > span"), "OPENSTREETMAP");
     $(".map-credit").hidden = true;
     $("#map-view").classList.add("has-real-map");
-    $("#map-view").setAttribute(
+    window.VSGI18n.attr(
+      $("#map-view"),
       "aria-label",
-      "Карта проверок в Астане. Перемещайте карту и меняйте масштаб.",
+      tr("Карта проверок в Астане. Перемещайте карту и меняйте масштаб."),
     );
     if (!window.L) {
-      $("#map-tile-notice").textContent =
-        "Карта не загрузилась. Обновите страницу. Отчёты доступны в списке.";
+      window.VSGI18n.text(
+        $("#map-tile-notice"),
+        tr(
+          "Карта не загрузилась. Обновите страницу. Отчёты доступны в списке.",
+        ),
+      );
       $("#map-tile-notice").hidden = false;
       return;
     }
@@ -356,15 +408,21 @@ window.VSGMap = (() => {
       if (!valid(picked)) return;
       const button = $("#save-location");
       button.disabled = true;
-      $("#location-error").textContent = "";
+      window.VSGI18n.text($("#location-error"), "");
       try {
         await onSave({ ...picked });
         $("#location-dialog").close();
       } catch (error) {
-        $("#location-error").textContent =
+        window.VSGI18n.text(
+          $("#location-error"),
           error?.code === "PGRST202"
-            ? "Для сохранения точки выполните real-map.sql в SQL Editor проекта Supabase."
-            : "Не удалось сохранить место. Проверьте подключение и повторите попытку.";
+            ? tr(
+                "Для сохранения точки выполните real-map.sql в SQL Editor проекта Supabase.",
+              )
+            : tr(
+                "Не удалось сохранить место. Проверьте подключение и повторите попытку.",
+              ),
+        );
       } finally {
         button.disabled = false;
       }

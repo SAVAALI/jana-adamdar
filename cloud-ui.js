@@ -8,55 +8,71 @@ window.VSGCloudUI = (() => {
   let publicRequest = null;
   const accountReports = new Map();
   const roles = {
-    pending: "Ожидает доступа",
-    member: "Участник",
-    admin: "Администратор",
-    blocked: "Доступ приостановлен",
+    pending: tr("Ожидает доступа"),
+    member: tr("Участник"),
+    admin: tr("Администратор"),
+    blocked: tr("Доступ приостановлен"),
   };
   const reviewStates = {
-    pending: "На проверке",
-    approved: "Опубликован",
-    rejected: "Не опубликован",
+    pending: tr("На проверке"),
+    approved: tr("Опубликован"),
+    rejected: tr("Не опубликован"),
   };
   const canSubmit = () =>
     ["member", "admin"].includes(cloudState.profile?.role);
 
   function message(error) {
     const known = {
-      invalid_credentials: "Неверная почта или пароль.",
-      email_not_confirmed:
+      invalid_credentials: tr("Неверная почта или пароль."),
+      email_not_confirmed: tr(
         "Подтвердите почту по ссылке из письма, затем войдите.",
-      user_already_exists: "Такой аккаунт уже существует. Попробуйте войти.",
-      over_email_send_rate_limit:
+      ),
+      user_already_exists: tr(
+        "Такой аккаунт уже существует. Попробуйте войти.",
+      ),
+      over_email_send_rate_limit: tr(
         "Письмо уже отправлено. Подождите немного перед повторной попыткой.",
-      email_address_invalid: "Проверьте адрес почты.",
-      weak_password: "Выберите более надёжный пароль: не меньше 8 символов.",
-      signup_disabled:
+      ),
+      email_address_invalid: tr("Проверьте адрес почты."),
+      weak_password: tr(
+        "Выберите более надёжный пароль: не меньше 8 символов.",
+      ),
+      signup_disabled: tr(
         "Регистрация сейчас закрыта. Свяжитесь с администратором команды.",
+      ),
     };
     if (error?.code === "PGRST202")
-      return "Для сохранения подробного отчёта выполните products.sql в SQL Editor Supabase.";
+      return tr(
+        "Для сохранения подробного отчёта выполните products.sql в SQL Editor Supabase.",
+      );
     if (known[error?.code]) return known[error.code];
     if (error?.message === "Invalid login credentials")
       return known.invalid_credentials;
     if (error?.message === "Email not confirmed")
       return known.email_not_confirmed;
-    if (/^[А-ЯЁа-яё]/.test(error?.message || "")) return error.message;
-    return "Не удалось выполнить запрос. Проверьте подключение и повторите попытку.";
+    if (/^[А-ЯЁа-яё]/.test(error?.message || "")) return tr(error.message);
+    return tr(
+      "Не удалось выполнить запрос. Проверьте подключение и повторите попытку.",
+    );
   }
 
   function updateAccess() {
     const profile = cloudState.profile;
-    $("#account-button span").textContent = profile ? "Кабинет" : "Войти";
+    window.VSGI18n.text(
+      $("#account-button span"),
+      profile ? tr("Кабинет") : tr("Войти"),
+    );
     const text = !profile
-      ? "Войдите в аккаунт, чтобы отправить отчёт команде."
+      ? tr("Войдите в аккаунт, чтобы отправить отчёт команде.")
       : profile.role === "pending"
-        ? "Ваш аккаунт ожидает одобрения администратора."
+        ? tr("Ваш аккаунт ожидает одобрения администратора.")
         : profile.role === "blocked"
-          ? "Доступ к отправке приостановлен. Обратитесь к администратору."
-          : `Вы в команде, ${profile.display_name}. Отчёт появится после проверки.`;
-    $("#report-access").innerHTML =
-      `<p>${escapeHTML(text)}</p><button type="button" data-open-account>${profile ? "Кабинет" : "Войти"} ${icon("arrow")}</button>`;
+          ? tr("Доступ к отправке приостановлен. Обратитесь к администратору.")
+          : tr`Вы в команде, ${profile.display_name}. Отчёт появится после проверки.`;
+    $("#report-access").innerHTML = html`<p>${escapeHTML(text)}</p>
+      <button type="button" data-open-account>
+        ${profile ? tr("Кабинет") : tr("Войти")} ${icon("arrow")}
+      </button>`;
     syncSubmitButton();
   }
 
@@ -97,8 +113,12 @@ window.VSGCloudUI = (() => {
         )
       ) {
         if ($("#account-error"))
-          $("#account-error").textContent =
-            "Не удалось проверить доступ. Текущие данные сохранены; повторите обновление кабинета.";
+          window.VSGI18n.text(
+            $("#account-error"),
+            tr(
+              "Не удалось проверить доступ. Текущие данные сохранены; повторите обновление кабинета.",
+            ),
+          );
         return;
       }
       cloudState.profile = null;
@@ -123,13 +143,22 @@ window.VSGCloudUI = (() => {
           selectedId = stores[0]?.id || null;
         if (!canSubmit()) cloudCatalog = [...stores];
         renderStoreOptions();
-        $("#cloud-notice").textContent =
-          "Общие отчёты команды · обновляются каждую минуту";
+        window.VSGI18n.text(
+          $("#cloud-notice"),
+          tr("Общие отчёты команды · обновляются каждую минуту"),
+        );
         $("#cloud-status").classList.remove("has-error");
       } catch {
-        $("#cloud-notice").textContent = cloudState.ready
-          ? "Не удалось обновить карту. Показаны последние загруженные проверки."
-          : "Не удалось загрузить проверки команды. Попробуйте обновить карту.";
+        window.VSGI18n.text(
+          $("#cloud-notice"),
+          cloudState.ready
+            ? tr(
+                "Не удалось обновить карту. Показаны последние загруженные проверки.",
+              )
+            : tr(
+                "Не удалось загрузить проверки команды. Попробуйте обновить карту.",
+              ),
+        );
         $("#cloud-status").classList.add("has-error");
       } finally {
         cloudState.loading = false;
@@ -155,8 +184,41 @@ window.VSGCloudUI = (() => {
     const profile = cloudState.profile;
     if (profile?.role !== "admin") window.VSGAdmin?.reset();
     if (profile && authMode !== "password") {
-      $("#account-content").innerHTML =
-        `<p class="eyebrow">ВРЕМЯ И СТЕКЛО · АСТАНА</p><h2 id="account-title">${profile.role === "admin" ? "Кабинет администратора" : "Кабинет участника"}</h2><p class="account-identity">${escapeHTML(profile.display_name)}<br><span>${escapeHTML(profile.email)}</span></p><span class="review-badge ${profile.role}">${roles[profile.role] || "Участник"}</span><div class="account-toolbar"><button type="button" id="account-refresh">Обновить кабинет</button><button type="button" id="sign-out">Выйти</button></div>${!canSubmit() ? `<p class="account-hint">${profile.role === "pending" ? "Аккаунт создан. Администратор команды должен разрешить отправку отчётов. После одобрения нажмите «Обновить кабинет»." : "Отправка отчётов приостановлена. Ранее отправленные проверки доступны ниже."}</p>` : ""}<p id="account-error" class="field-error" role="alert"></p><div id="account-data" aria-live="polite"><p class="account-loading">Загружаем ваши отчёты…</p></div>`;
+      $("#account-content").innerHTML = html`<p class="eyebrow">
+          ВРЕМЯ И СТЕКЛО · АСТАНА
+        </p>
+        <h2 id="account-title">
+          ${profile.role === "admin"
+            ? tr("Кабинет администратора")
+            : tr("Кабинет участника")}
+        </h2>
+        <p class="account-identity">
+          ${escapeHTML(profile.display_name)}<br /><span
+            >${escapeHTML(profile.email)}</span
+          >
+        </p>
+        <span class="review-badge ${profile.role}"
+          >${roles[profile.role] || tr("Участник")}</span
+        >
+        <div class="account-toolbar">
+          <button type="button" id="account-refresh">Обновить кабинет</button
+          ><button type="button" id="sign-out">Выйти</button>
+        </div>
+        ${!canSubmit()
+          ? html`<p class="account-hint">
+              ${profile.role === "pending"
+                ? tr(
+                    "Аккаунт создан. Администратор команды должен разрешить отправку отчётов. После одобрения нажмите «Обновить кабинет».",
+                  )
+                : tr(
+                    "Отправка отчётов приостановлена. Ранее отправленные проверки доступны ниже.",
+                  )}
+            </p>`
+          : ""}
+        <p id="account-error" class="field-error" role="alert"></p>
+        <div id="account-data" aria-live="polite">
+          <p class="account-loading">Загружаем ваши отчёты…</p>
+        </div>`;
       loadAccount();
       return;
     }
@@ -164,30 +226,255 @@ window.VSGCloudUI = (() => {
     const isReset = authMode === "reset";
     const isPassword = authMode === "password";
     const title = isPassword
-      ? "Новый пароль"
+      ? tr("Новый пароль")
       : isReset
-        ? "Восстановить доступ"
+        ? tr("Восстановить доступ")
         : isRegister
-          ? "Присоединиться к команде"
-          : "Вход в команду";
-    $("#account-content").innerHTML =
-      `<p class="eyebrow">ВРЕМЯ И СТЕКЛО · АСТАНА</p><h2 id="account-title">${title}</h2><p class="account-hint">${isPassword ? "Укажите новый пароль для своего аккаунта." : isReset ? "Отправим на вашу почту ссылку для смены пароля." : isRegister ? "Подтвердите почту после регистрации. Отправку отчётов откроет администратор команды." : "Войдите, чтобы отправлять проверки и смотреть их статус."}</p><form id="auth-form">${isRegister ? `<label class="field-label" for="auth-name">Как вас зовут</label><input id="auth-name" class="text-input" autocomplete="name" required minlength="2" maxlength="60">` : ""}${!isPassword ? `<label class="field-label" for="auth-email">Электронная почта</label><input id="auth-email" class="text-input" type="email" autocomplete="email" required maxlength="254">` : ""}${!isReset ? `<label class="field-label" for="auth-password">${isPassword ? "Новый пароль" : "Пароль"}</label><input id="auth-password" class="text-input" type="password" autocomplete="${isRegister || isPassword ? "new-password" : "current-password"}" required minlength="${isRegister || isPassword ? 8 : 1}" maxlength="128">` : ""}${isRegister || isPassword ? `<label class="field-label" for="auth-password-repeat">Повторите пароль</label><input id="auth-password-repeat" class="text-input" type="password" autocomplete="new-password" required minlength="8" maxlength="128">` : ""}<p id="auth-error" class="field-error" role="alert"></p><p id="auth-feedback" class="auth-feedback" role="status">${escapeHTML(authFeedback)}</p><button class="button button-purple auth-submit" type="submit">${isPassword ? "Сохранить пароль" : isReset ? "Отправить ссылку" : isRegister ? "Создать аккаунт" : "Войти"} ${icon("arrow")}</button></form><div class="auth-links">${authMode !== "login" ? `<button type="button" data-auth-mode="login">К входу</button>` : `<button type="button" data-auth-mode="register">Создать аккаунт</button><button type="button" data-auth-mode="reset">Забыли пароль?</button>`}</div>`;
+          ? tr("Присоединиться к команде")
+          : tr("Вход в команду");
+    $("#account-content").innerHTML = html`<p class="eyebrow">
+        ВРЕМЯ И СТЕКЛО · АСТАНА
+      </p>
+      <h2 id="account-title">${title}</h2>
+      <p class="account-hint">
+        ${isPassword
+          ? tr("Укажите новый пароль для своего аккаунта.")
+          : isReset
+            ? tr("Отправим на вашу почту ссылку для смены пароля.")
+            : isRegister
+              ? tr(
+                  "Подтвердите почту после регистрации. Отправку отчётов откроет администратор команды.",
+                )
+              : tr("Войдите, чтобы отправлять проверки и смотреть их статус.")}
+      </p>
+      <form id="auth-form">
+        ${isRegister
+          ? html`<label class="field-label" for="auth-name">Как вас зовут</label
+              ><input
+                id="auth-name"
+                class="text-input"
+                autocomplete="name"
+                required
+                minlength="2"
+                maxlength="60"
+              />`
+          : ""}${!isPassword
+          ? html`<label class="field-label" for="auth-email"
+                >Электронная почта</label
+              ><input
+                id="auth-email"
+                class="text-input"
+                type="email"
+                autocomplete="email"
+                required
+                maxlength="254"
+              />`
+          : ""}${!isReset
+          ? html`<label class="field-label" for="auth-password"
+                >${isPassword ? tr("Новый пароль") : tr("Пароль")}</label
+              ><input
+                id="auth-password"
+                class="text-input"
+                type="password"
+                autocomplete="${isRegister || isPassword
+                  ? "new-password"
+                  : "current-password"}"
+                required
+                minlength="${isRegister || isPassword ? 8 : 1}"
+                maxlength="128"
+              />`
+          : ""}${isRegister || isPassword
+          ? html`<label class="field-label" for="auth-password-repeat"
+                >Повторите пароль</label
+              ><input
+                id="auth-password-repeat"
+                class="text-input"
+                type="password"
+                autocomplete="new-password"
+                required
+                minlength="8"
+                maxlength="128"
+              />`
+          : ""}
+        <p id="auth-error" class="field-error" role="alert"></p>
+        <p id="auth-feedback" class="auth-feedback" role="status">
+          ${escapeHTML(authFeedback)}
+        </p>
+        <button class="button button-purple auth-submit" type="submit">
+          ${isPassword
+            ? tr("Сохранить пароль")
+            : isReset
+              ? tr("Отправить ссылку")
+              : isRegister
+                ? tr("Создать аккаунт")
+                : tr("Войти")}
+          ${icon("arrow")}
+        </button>
+      </form>
+      <div class="auth-links">
+        ${authMode !== "login"
+          ? html`<button type="button" data-auth-mode="login">К входу</button>`
+          : html`<button type="button" data-auth-mode="register">
+                Создать аккаунт</button
+              ><button type="button" data-auth-mode="reset">
+                Забыли пароль?
+              </button>`}
+      </div>`;
   }
 
   function reportCard(report, admin = false) {
     accountReports.set(report.reportId, report);
     const id = report.reportId;
-    return `<article class="account-report" data-admin-report="${id}"><div class="account-report-heading"><strong>${escapeHTML(report.name)}</strong><span class="review-badge ${report.moderationState}">${reviewStates[report.moderationState]}</span></div><p class="account-report-address">${escapeHTML(report.address)} · ${displayDate(report.date)}</p>${
-      admin
-        ? `<p class="admin-author">Отправил: <strong>${escapeHTML(report.authorName || "Участник")}</strong>${report.submittedAt ? ` · ${displayDate(report.submittedAt)}` : ""}</p><div class="admin-result">${badge(report.status)}${report.products.length ? `<span>Товаров: ${report.products.length} · ${report.products.reduce((sum, p) => sum + Number(p.quantity || 0), 0)} уп.</span>` : ""}</div><div class="admin-previews">${report.photos
-            .slice(0, 3)
-            .map(
-              (photo, index) =>
-                `<button type="button" data-private-report="${id}" aria-label="Посмотреть фото ${index + 1}: ${escapeHTML(report.name)}"><img src="${escapeHTML(imageURL(photo))}" alt="Фото проверки ${index + 1}" loading="lazy"></button>`,
-            )
-            .join("")}</div>`
-        : ""
-    }<p class="account-report-description">${escapeHTML(report.description.slice(0, 160))}${report.description.length > 160 ? "…" : ""}</p>${report.moderationNote ? `<p class="moderation-note">Причина: ${escapeHTML(report.moderationNote)}</p>` : ""}<button type="button" class="account-text-button" data-private-report="${id}">Фото и подробности ${icon("arrow")}</button>${admin ? `<button type="button" class="account-text-button" data-report-location="${id}">${window.VSGMap?.valid(report) ? "Изменить место на карте" : "Указать место на карте"}</button><div class="moderation-controls">${report.moderationState !== "approved" ? `<button type="button" data-review="approved" data-report-id="${id}">Опубликовать отчёт ${icon("check")}</button>` : ""}${report.moderationState !== "rejected" ? `<details class="rejection-editor"><summary>${report.moderationState === "approved" ? "Снять с публикации" : "Отклонить отчёт"}</summary><label class="field-label" for="reason-${id}">Причина — её увидит автор</label><select class="text-input" id="reason-${id}" data-rejection-preset="${id}"><option value="">Выберите причину</option>${["Не видна дата на упаковке", "Неверный адрес магазина", "Не хватает фотографий", "Товар не соответствует описанию"].map((reason) => `<option value="${reason}">${reason}</option>`).join("")}<option value="custom">Своя причина</option></select><div id="custom-${id}" hidden><label class="field-label" for="note-${id}">Что нужно исправить?</label><textarea class="text-input" id="note-${id}" data-rejection-note="${id}" minlength="5" maxlength="500" rows="3" placeholder="Объясните участнику, что нужно исправить"></textarea></div><p class="field-error" id="review-error-${id}" role="alert"></p><button type="button" class="reject-button" data-review="rejected" data-report-id="${id}">${report.moderationState === "approved" ? "Снять с публикации" : "Отклонить с причиной"}</button></details>` : ""}</div>` : ""}</article>`;
+    return html`<article class="account-report" data-admin-report="${id}">
+      <div class="account-report-heading">
+        <strong>${escapeHTML(report.name)}</strong
+        ><span class="review-badge ${report.moderationState}"
+          >${reviewStates[report.moderationState]}</span
+        >
+      </div>
+      <p class="account-report-address">
+        ${escapeHTML(report.address)} · ${displayDate(report.date)}
+      </p>
+      ${admin
+        ? html`<p class="admin-author">
+              Отправил:
+              <strong>${escapeHTML(report.authorName || tr("Участник"))}</strong
+              >${report.submittedAt
+                ? ` · ${displayDate(report.submittedAt)}`
+                : ""}
+            </p>
+            <div class="admin-result">
+              ${badge(report.status)}${report.products.length
+                ? html`<span
+                    >Товаров: ${report.products.length} ·
+                    ${report.products.reduce(
+                      (sum, p) => sum + Number(p.quantity || 0),
+                      0,
+                    )}
+                    уп.</span
+                  >`
+                : ""}
+            </div>
+            <div class="admin-previews">
+              ${report.photos
+                .slice(0, 3)
+                .map(
+                  (photo, index) =>
+                    html`<button
+                      type="button"
+                      data-private-report="${id}"
+                      aria-label="Посмотреть фото ${index + 1}: ${escapeHTML(
+                        report.name,
+                      )}"
+                    >
+                      <img
+                        src="${escapeHTML(imageURL(photo))}"
+                        alt="Фото проверки ${index + 1}"
+                        loading="lazy"
+                      />
+                    </button>`,
+                )
+                .join("")}
+            </div>`
+        : ""}
+      <p class="account-report-description">
+        ${escapeHTML(report.description.slice(0, 160))}${report.description
+          .length > 160
+          ? "…"
+          : ""}
+      </p>
+      ${report.moderationNote
+        ? html`<p class="moderation-note">
+            Причина: ${escapeHTML(report.moderationNote)}
+          </p>`
+        : ""}<button
+        type="button"
+        class="account-text-button"
+        data-private-report="${id}"
+      >
+        Фото и подробности ${icon("arrow")}</button
+      >${admin
+        ? html`<button
+              type="button"
+              class="account-text-button"
+              data-report-location="${id}"
+            >
+              ${window.VSGMap?.valid(report)
+                ? tr("Изменить место на карте")
+                : tr("Указать место на карте")}
+            </button>
+            <div class="moderation-controls">
+              ${report.moderationState !== "approved"
+                ? html`<button
+                    type="button"
+                    data-review="approved"
+                    data-report-id="${id}"
+                  >
+                    Опубликовать отчёт ${icon("check")}
+                  </button>`
+                : ""}${report.moderationState !== "rejected"
+                ? html`<details class="rejection-editor">
+                    <summary>
+                      ${report.moderationState === "approved"
+                        ? tr("Снять с публикации")
+                        : tr("Отклонить отчёт")}
+                    </summary>
+                    <label class="field-label" for="reason-${id}"
+                      >Причина — её увидит автор</label
+                    ><select
+                      class="text-input"
+                      id="reason-${id}"
+                      data-rejection-preset="${id}"
+                    >
+                      <option value="">Выберите причину</option>
+                      ${[
+                        "Не видна дата на упаковке",
+                        "Неверный адрес магазина",
+                        "Не хватает фотографий",
+                        "Товар не соответствует описанию",
+                      ]
+                        .map(
+                          (reason) =>
+                            html`<option value="${reason}">
+                              ${tr(reason)}
+                            </option>`,
+                        )
+                        .join("")}
+                      <option value="custom">Своя причина</option>
+                    </select>
+                    <div id="custom-${id}" hidden>
+                      <label class="field-label" for="note-${id}"
+                        >Что нужно исправить?</label
+                      ><textarea
+                        class="text-input"
+                        id="note-${id}"
+                        data-rejection-note="${id}"
+                        minlength="5"
+                        maxlength="500"
+                        rows="3"
+                        placeholder="Объясните участнику, что нужно исправить"
+                      ></textarea>
+                    </div>
+                    <p
+                      class="field-error"
+                      id="review-error-${id}"
+                      role="alert"
+                    ></p>
+                    <button
+                      type="button"
+                      class="reject-button"
+                      data-review="rejected"
+                      data-report-id="${id}"
+                    >
+                      ${report.moderationState === "approved"
+                        ? tr("Снять с публикации")
+                        : tr("Отклонить с причиной")}
+                    </button>
+                  </details>`
+                : ""}
+            </div>`
+        : ""}
+    </article>`;
   }
 
   async function loadAccount() {
@@ -212,14 +499,85 @@ window.VSGCloudUI = (() => {
           Number(b.moderationState === "pending") -
           Number(a.moderationState === "pending"),
       );
-      $("#account-data").innerHTML =
-        `${admin ? `<p class="admin-setup-note">Для нового кабинета выполните <a href="https://github.com/SAVAALI/jana-adamdar/blob/main/supabase/admin.sql" target="_blank" rel="noopener">admin.sql</a> в Supabase. Ниже доступна прежняя очередь.</p>` : ""}<section><h3>Мои отчёты <small>последние 100</small></h3>${own.length ? own.map((report) => reportCard(report)).join("") : `<p class="account-hint">Здесь появятся ваши отправленные проверки.</p>`}</section>${admin ? `<section><h3>Проверка отчётов <small>последние 100</small></h3>${reviewSorted.length ? reviewSorted.map((report) => reportCard(report, true)).join("") : `<p class="account-hint">Отчётов для проверки пока нет.</p>`}</section><section><h3>Участники <small>последние 100 регистраций</small></h3>${members.map((member) => `<article class="member-row"><div><strong>${escapeHTML(member.display_name)}</strong><small>${escapeHTML(member.email)}</small><span class="review-badge ${member.role}">${roles[member.role]}</span></div>${member.role !== "admin" ? `<div class="member-actions">${member.role !== "member" ? `<button type="button" data-member-id="${member.user_id}" data-member-role="member">Разрешить</button>` : ""}${member.role !== "blocked" ? `<button type="button" data-member-id="${member.user_id}" data-member-role="blocked">${member.role === "pending" ? "Отклонить" : "Приостановить"}</button>` : ""}</div>` : ""}</article>`).join("")}</section>` : ""}`;
+      $("#account-data").innerHTML = html`${admin
+          ? html`<p class="admin-setup-note">
+              Для нового кабинета выполните
+              <a
+                href="https://github.com/SAVAALI/jana-adamdar/blob/main/supabase/admin.sql"
+                target="_blank"
+                rel="noopener"
+                >admin.sql</a
+              >
+              в Supabase. Ниже доступна прежняя очередь.
+            </p>`
+          : ""}
+        <section>
+          <h3>Мои отчёты <small>последние 100</small></h3>
+          ${own.length
+            ? own.map((report) => reportCard(report)).join("")
+            : html`<p class="account-hint">
+                Здесь появятся ваши отправленные проверки.
+              </p>`}
+        </section>
+        ${admin
+          ? html`<section>
+                <h3>Проверка отчётов <small>последние 100</small></h3>
+                ${reviewSorted.length
+                  ? reviewSorted
+                      .map((report) => reportCard(report, true))
+                      .join("")
+                  : html`<p class="account-hint">
+                      Отчётов для проверки пока нет.
+                    </p>`}
+              </section>
+              <section>
+                <h3>Участники <small>последние 100 регистраций</small></h3>
+                ${members
+                  .map(
+                    (member) =>
+                      html`<article class="member-row">
+                        <div>
+                          <strong>${escapeHTML(member.display_name)}</strong
+                          ><small>${escapeHTML(member.email)}</small
+                          ><span class="review-badge ${member.role}"
+                            >${roles[member.role]}</span
+                          >
+                        </div>
+                        ${member.role !== "admin"
+                          ? html`<div class="member-actions">
+                              ${member.role !== "member"
+                                ? html`<button
+                                    type="button"
+                                    data-member-id="${member.user_id}"
+                                    data-member-role="member"
+                                  >
+                                    Разрешить
+                                  </button>`
+                                : ""}${member.role !== "blocked"
+                                ? html`<button
+                                    type="button"
+                                    data-member-id="${member.user_id}"
+                                    data-member-role="blocked"
+                                  >
+                                    ${member.role === "pending"
+                                      ? tr("Отклонить")
+                                      : tr("Приостановить")}
+                                  </button>`
+                                : ""}
+                            </div>`
+                          : ""}
+                      </article>`,
+                  )
+                  .join("")}
+              </section>`
+          : ""}`;
       if (admin) window.VSGAdmin.restoreNotes();
     } catch (error) {
       if (request !== accountRequest || !$("#account-data")) return;
-      $("#account-data").innerHTML =
-        `<p class="account-hint">Не удалось загрузить кабинет. Нажмите «Обновить кабинет».</p>`;
-      $("#account-error").textContent = message(error);
+      $("#account-data").innerHTML = html`<p class="account-hint">
+        Не удалось загрузить кабинет. Нажмите «Обновить кабинет».
+      </p>`;
+      window.VSGI18n.text($("#account-error"), message(error));
     }
   }
 
@@ -232,12 +590,12 @@ window.VSGCloudUI = (() => {
       $("#auth-password-repeat") &&
       password !== $("#auth-password-repeat").value
     ) {
-      $("#auth-error").textContent = "Пароли не совпадают.";
+      window.VSGI18n.text($("#auth-error"), tr("Пароли не совпадают."));
       return;
     }
     const button = $("#auth-form button[type=submit]");
     button.disabled = true;
-    $("#auth-error").textContent = "";
+    window.VSGI18n.text($("#auth-error"), "");
     authFeedback = "";
     try {
       if (mode === "login") {
@@ -249,23 +607,26 @@ window.VSGCloudUI = (() => {
           password,
           $("#auth-name").value.trim(),
         );
-        authFeedback =
-          "Проверьте почту и перейдите по ссылке из письма. После входа администратор сможет открыть вам доступ.";
+        authFeedback = tr(
+          "Проверьте почту и перейдите по ссылке из письма. После входа администратор сможет открыть вам доступ.",
+        );
         authMode = "login";
         if (data.session) await refreshIdentity();
       } else if (mode === "reset") {
         await cloudState.backend.resetPassword(email);
-        authFeedback =
-          "Если аккаунт с этой почтой существует, вы получите ссылку для смены пароля.";
+        authFeedback = tr(
+          "Если аккаунт с этой почтой существует, вы получите ссылку для смены пароля.",
+        );
       } else {
         await cloudState.backend.updatePassword(password);
-        authFeedback = "Пароль обновлён.";
+        authFeedback = tr("Пароль обновлён.");
         authMode = "login";
         await refreshIdentity();
       }
       renderAccount();
     } catch (error) {
-      if ($("#auth-error")) $("#auth-error").textContent = message(error);
+      if ($("#auth-error"))
+        window.VSGI18n.text($("#auth-error"), message(error));
       else toast(message(error));
     } finally {
       button.disabled = false;
@@ -274,8 +635,10 @@ window.VSGCloudUI = (() => {
 
   async function submit(details) {
     if (!cloudState.ready) {
-      $("#form-error").textContent =
-        "Дождитесь загрузки карты и повторите отправку.";
+      window.VSGI18n.text(
+        $("#form-error"),
+        tr("Дождитесь загрузки карты и повторите отправку."),
+      );
       return;
     }
     if (!canSubmit()) {
@@ -284,8 +647,12 @@ window.VSGCloudUI = (() => {
     }
     if (!navigator.onLine) {
       await window.VSGDrafts?.flush();
-      $("#form-error").textContent =
-        "Нет интернета. Отправьте отчёт после восстановления соединения. Состояние черновика указано над формой.";
+      window.VSGI18n.text(
+        $("#form-error"),
+        tr(
+          "Нет интернета. Отправьте отчёт после восстановления соединения. Состояние черновика указано над формой.",
+        ),
+      );
       return;
     }
     const draftContext = window.VSGDrafts?.contextToken();
@@ -303,32 +670,44 @@ window.VSGCloudUI = (() => {
       await cloudState.backend.submit(
         { ...details, photos: details.photos.map((photo) => ({ ...photo })) },
         (text) => {
-          button.textContent = text;
+          window.VSGI18n.text(button, text);
         },
       );
       if (draftContext !== window.VSGDrafts?.contextToken()) return;
       await window.VSGDrafts?.clear({ resetForm: false });
       $("#report-form").reset();
       window.VSGProducts.restore();
-      $("#character-count").textContent = "0 / 1000";
+      window.VSGI18n.text($("#character-count"), "0 / 1000");
       pendingPhotos = [];
       renderPhotoPreviews();
       changeNewStoreFields();
-      $("#form-success").innerHTML =
-        `${icon("check")} <strong>Отчёт отправлен на проверку!</strong> После одобрения он появится на общей карте.<button type="button" data-open-account ${cloudState.profile?.role === "admin" ? "data-admin-pending" : ""}>${cloudState.profile?.role === "admin" ? "Открыть очередь отчётов" : "Посмотреть мои отчёты"} →</button>`;
+      $("#form-success").innerHTML = html`${icon("check")}
+        <strong>Отчёт отправлен на проверку!</strong> После одобрения он
+        появится на общей карте.<button
+          type="button"
+          data-open-account
+          ${cloudState.profile?.role === "admin" ? "data-admin-pending" : ""}
+        >
+          ${cloudState.profile?.role === "admin"
+            ? tr("Открыть очередь отчётов")
+            : tr("Посмотреть мои отчёты")}
+          →
+        </button>`;
       $("#form-success").hidden = false;
-      toast("Спасибо! Команда получила ваш отчёт.");
+      toast(tr("Спасибо! Команда получила ваш отчёт."));
       await refreshIdentity();
     } catch (error) {
       if (draftContext !== window.VSGDrafts?.contextToken()) return;
-      $("#form-error").textContent =
-        `${message(error)} Форма и фото сохранены на экране — можно повторить отправку.`;
+      window.VSGI18n.text(
+        $("#form-error"),
+        tr`${message(error)} Форма и фото сохранены на экране — можно повторить отправку.`,
+      );
     } finally {
       controls.forEach(([control, disabled]) => {
         control.disabled = disabled;
       });
       submittingReport = false;
-      button.innerHTML = `Отправить отчёт на сайт ${icon("arrow")}`;
+      button.innerHTML = tr`Отправить отчёт на сайт ${icon("arrow")}`;
       syncSubmitButton();
     }
   }
@@ -373,7 +752,7 @@ window.VSGCloudUI = (() => {
           await cloudState.backend.signOut();
           cloudState.profile = null;
           authMode = "login";
-          authFeedback = "Вы вышли из аккаунта.";
+          authFeedback = tr("Вы вышли из аккаунта.");
           await refreshIdentity();
           renderAccount();
         } catch (error) {
@@ -390,7 +769,7 @@ window.VSGCloudUI = (() => {
           window.VSGMap.editReport(report, async (point) => {
             await cloudState.backend.setLocation(report.reportId, point);
             await Promise.all([loadAccount(), refreshPublic()]);
-            toast("Место проверки сохранено.");
+            toast(tr("Место проверки сохранено."));
           });
         return;
       }
@@ -413,12 +792,16 @@ window.VSGCloudUI = (() => {
           )?.value.trim() || ""
         : "";
       const note =
-        preset && preset.value !== "custom" ? preset.value : customNote;
+        preset && preset.value !== "custom"
+          ? String(tr(preset.value))
+          : customNote;
       if (reviewButton?.dataset.review === "rejected" && note.length < 5) {
-        $(
-          `#review-error-${CSS.escape(reviewButton.dataset.reportId)}`,
-        ).textContent =
-          "Выберите причину или объясните, что нужно исправить (от 5 символов).";
+        window.VSGI18n.text(
+          $(`#review-error-${CSS.escape(reviewButton.dataset.reportId)}`),
+          tr(
+            "Выберите причину или объясните, что нужно исправить (от 5 символов).",
+          ),
+        );
         (preset?.value === "custom"
           ? $(`#note-${CSS.escape(reviewButton.dataset.reportId)}`)
           : preset
@@ -426,7 +809,7 @@ window.VSGCloudUI = (() => {
         return;
       }
       action.disabled = true;
-      if ($("#account-error")) $("#account-error").textContent = "";
+      if ($("#account-error")) window.VSGI18n.text($("#account-error"), "");
       if (reviewButton)
         $(
           `#review-error-${CSS.escape(reviewButton.dataset.reportId)}`,
@@ -448,12 +831,12 @@ window.VSGCloudUI = (() => {
         await Promise.all([loadAccount(), refreshPublic()]);
         toast(
           reviewButton
-            ? "Статус отчёта обновлён."
-            : "Доступ участника обновлён.",
+            ? tr("Статус отчёта обновлён.")
+            : tr("Доступ участника обновлён."),
         );
       } catch (error) {
         if ($("#account-error"))
-          $("#account-error").textContent = message(error);
+          window.VSGI18n.text($("#account-error"), message(error));
         else toast(message(error));
       } finally {
         action.disabled = false;
@@ -471,14 +854,20 @@ window.VSGCloudUI = (() => {
     $("#account-button").hidden = false;
     $("#cloud-status").hidden = false;
     $("#report-access").hidden = false;
-    $(".demo-stats-note").textContent = "Только одобренные проверки команды";
+    window.VSGI18n.text(
+      $(".demo-stats-note"),
+      tr("Только одобренные проверки команды"),
+    );
     $(".form-note").innerHTML =
-      `${icon("shield")} Фото доступны команде. Публичными они станут после проверки отчёта.`;
+      tr`${icon("shield")} Фото доступны команде. Публичными они станут после проверки отчёта.`;
     $(".map-disclaimer").innerHTML =
-      `${icon("clock")} На карте — последние опубликованные проверки. Место указывает участник или администратор; адрес и фотографии — в карточке.`;
-    $(".hero-note").textContent = "Реальные проверки. Общая забота об Астане.";
+      tr`${icon("clock")} На карте — последние опубликованные проверки. Место указывает участник или администратор; адрес и фотографии — в карточке.`;
+    window.VSGI18n.text(
+      $(".hero-note"),
+      tr("Реальные проверки. Общая забота об Астане."),
+    );
 
-    $("#current-year").textContent = new Date().getFullYear();
+    window.VSGI18n.text($("#current-year"), new Date().getFullYear());
     bindEvents();
     bindCloudEvents();
     window.VSGAdmin.init();
@@ -515,7 +904,7 @@ window.VSGCloudUI = (() => {
           window.VSGProducts.restore();
           changeNewStoreFields();
           renderPhotoPreviews();
-          $("#character-count").textContent = "0 / 1000";
+          window.VSGI18n.text($("#character-count"), "0 / 1000");
         }
         await refreshIdentity();
       });
@@ -528,8 +917,10 @@ window.VSGCloudUI = (() => {
         }
       }, 60000);
     } catch {
-      $("#cloud-notice").textContent =
-        "Подключение временно недоступно. Обновите страницу.";
+      window.VSGI18n.text(
+        $("#cloud-notice"),
+        tr("Подключение временно недоступно. Обновите страницу."),
+      );
       $("#cloud-status").classList.add("has-error");
       syncSubmitButton();
     }

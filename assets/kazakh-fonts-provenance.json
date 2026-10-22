@@ -1,0 +1,26 @@
+[
+  {
+    "file": "fonts/golos-text-cyrillic-ext-400-normal.woff2",
+    "source": "https://cdn.jsdelivr.net/npm/@fontsource/golos-text@5.2.7/files/golos-text-cyrillic-ext-400-normal.woff2",
+    "sha512": "2d15d2fc1992ad11204b50b6b39d5fca1528ffe2bf3c92a94c4cdc60f7682f9e5ef2f885fa83fc09d1f545542364e64621b5a6718935a514ff6154228184a736",
+    "bytes": 5108
+  },
+  {
+    "file": "fonts/golos-text-cyrillic-ext-500-normal.woff2",
+    "source": "https://cdn.jsdelivr.net/npm/@fontsource/golos-text@5.2.7/files/golos-text-cyrillic-ext-500-normal.woff2",
+    "sha512": "4c52a54af5607b68b52b30728daeec3fed4409c8b7023bb6baed0fb71fc89c7dddaefd964e34b4540ad2364cb668e6b89246043a0fca86fbc19e0b396886069e",
+    "bytes": 5328
+  },
+  {
+    "file": "fonts/golos-text-cyrillic-ext-600-normal.woff2",
+    "source": "https://cdn.jsdelivr.net/npm/@fontsource/golos-text@5.2.7/files/golos-text-cyrillic-ext-600-normal.woff2",
+    "sha512": "4ce1b47a6f3299f44808f999804f0583ffbe4217291f94dff03930d74275b55c9ad038c2c2a8da8f75989b9d0be102ed88a0b3e1707ec4ec1f0bd9db51180eb4",
+    "bytes": 5388
+  },
+  {
+    "file": "fonts/golos-text-cyrillic-ext-700-normal.woff2",
+    "source": "https://cdn.jsdelivr.net/npm/@fontsource/golos-text@5.2.7/files/golos-text-cyrillic-ext-700-normal.woff2",
+    "sha512": "49298f26ff5d3b848ab407c57c8c8898856490a632efedea16ca3022e7a41a4c7974251278fd39ebd17a9cb8b6f7aed1ab72dc78c6f917b244b9e5ca5312d17a",
+    "bytes": 5292
+  }
+]

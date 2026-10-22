@@ -899,6 +899,39 @@ let debugPage;
   );
   await seedCard.locator("[data-rejection-preset]").selectOption("custom");
   await seedCard.locator("[data-rejection-note]").fill(rejectionReason);
+  // Changing language must preserve the open editor, its selected reason, and
+  // the original report contents while translating administrative actions.
+  await page.evaluate(() => VSGI18n.setLanguage("kk"));
+  assert.match(
+    await page.locator("#account-title").textContent(),
+    /Әкімші кабинеті/,
+  );
+  assert.match(
+    await seedCard.locator('[data-review="approved"]').textContent(),
+    /Есепті жариялау/,
+  );
+  assert.equal(
+    await seedCard.locator("[data-rejection-note]").inputValue(),
+    rejectionReason,
+  );
+  assert.equal(
+    await seedCard.locator("[data-rejection-preset]").inputValue(),
+    "custom",
+  );
+  assert.equal(
+    await seedCard.locator(".rejection-editor").getAttribute("open"),
+    "",
+  );
+  assert.match(
+    await seedCard.locator(".account-report-description").textContent(),
+    /СЕКРЕТНЫЙ ЧЕРНОВОЙ ОТЧЁТ/,
+  );
+  await page.locator('[data-admin-filter="all"]').click();
+  await page.waitForFunction(
+    () => !document.querySelector("#admin-results").inert,
+  );
+  assert.match(await page.locator("#admin-live").textContent(), /Табылған/);
+  await page.evaluate(() => VSGI18n.setLanguage("ru"));
   await page.locator('[data-admin-filter="all"]').click();
   await page.locator('[data-admin-filter="pending"]').click();
   await seedCard.locator(".rejection-editor summary").click();
@@ -1302,6 +1335,11 @@ let debugPage;
   );
   assert.equal(await page.locator("#submit-report").isDisabled(), false);
   assert.deepEqual(errors, []);
+  assert.deepEqual(
+    await page.evaluate(() => [...VSGI18n.missing]),
+    [],
+    "Missing cloud interface translations",
+  );
   console.log(
     "PASS: actual Supabase SDK against fixture HTTP API; public approved data; signed private photos; auth/signup/reset/error; account roles; upload and retry with stable ID/no duplicate upload; pending report stays private; draft form/photos/location survive reload/offline; stable submission ID after reload; sent/deleted drafts removed; account draft isolation; storage error feedback; published history pagination/photos/privacy/retry; real OSM map/attribution; address search/escaping/bounds; coordinate picker; saved coordinates; admin location correction; admin approval updates public map; admin exact counters/filter/search/pagination; rejection reason validation/persistence/author feedback; membership approval; gallery; stale-data error; 320–1440 responsive layout.",
   );

@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node tests/security.cjs",
     "test:browser": "node tests/cloud-browser.cjs",
-    "check": "node --check app.js && node --check backend.js && node --check cloud-ui.js && node --check map.js && node --check drafts.js && node --check history.js && node --check products.js && node --check admin.js && node --check config.js"
+    "test:i18n": "node tests/i18n-browser.cjs",
+    "check": "node --check i18n.js && node --check locales/kk.js && node --check app.js && node --check backend.js && node --check cloud-ui.js && node --check map.js && node --check drafts.js && node --check history.js && node --check products.js && node --check admin.js && node --check config.js"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.11",

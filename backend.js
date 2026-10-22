@@ -333,7 +333,7 @@ window.VSGBackend = class VSGBackend {
     const attachments = [];
     for (const [index, photo] of photos.entries()) {
       checkContext();
-      progress(`Загружаем фото ${index + 1} из ${photos.length}…`);
+      progress(tr`Загружаем фото ${index + 1} из ${photos.length}…`);
       const blob = await (await fetch(photo.url)).blob();
       const extension = {
         "image/jpeg": "jpg",
@@ -363,7 +363,7 @@ window.VSGBackend = class VSGBackend {
         filename: photo.name.slice(0, 150) || `Фото ${index + 1}`,
       });
     }
-    progress("Отправляем на проверку…");
+    progress(tr("Отправляем на проверку…"));
     checkContext();
     const response = await this.client.rpc("vsg_submit_product_report", {
       p_latitude: location?.latitude ?? null,

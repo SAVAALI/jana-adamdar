@@ -12,24 +12,24 @@ window.VSGAdmin = (() => {
   const notes = new Map();
   const choices = {
     reports: [
-      ["pending", "На проверке"],
-      ["approved", "Опубликованные"],
-      ["rejected", "Отклонённые"],
-      ["all", "Все отчёты"],
+      ["pending", tr("На проверке")],
+      ["approved", tr("Опубликованные")],
+      ["rejected", tr("Отклонённые")],
+      ["all", tr("Все отчёты")],
     ],
     members: [
-      ["pending", "Заявки"],
-      ["member", "Участники"],
-      ["admin", "Администраторы"],
-      ["blocked", "Без доступа"],
-      ["all", "Все"],
+      ["pending", tr("Заявки")],
+      ["member", tr("Участники")],
+      ["admin", tr("Администраторы")],
+      ["blocked", tr("Без доступа")],
+      ["all", tr("Все")],
     ],
   };
   const names = {
-    pending: "Ожидает доступа",
-    member: "Участник",
-    admin: "Администратор",
-    blocked: "Без доступа",
+    pending: tr("Ожидает доступа"),
+    member: tr("Участник"),
+    admin: tr("Администратор"),
+    blocked: tr("Без доступа"),
   };
   function reset() {
     owner = null;
@@ -65,36 +65,147 @@ window.VSGAdmin = (() => {
     const target = $("#account-data"),
       current = state[tab];
     if (!$("#admin-dashboard"))
-      target.innerHTML = `<section id="admin-dashboard" aria-label="Управление командой"><div class="admin-stats"><button type="button" data-admin-shortcut="reports:pending"><span>На проверке</span><strong data-admin-count="reports_pending">—</strong><small>открыть очередь →</small></button><button type="button" data-admin-shortcut="members:pending"><span>Заявки участников</span><strong data-admin-count="members_pending">—</strong><small>разрешить доступ →</small></button><button type="button" data-admin-shortcut="reports:approved"><span>Опубликовано</span><strong data-admin-count="reports_approved">—</strong><small>проверки на сайте →</small></button></div><div class="admin-tabs" role="tablist" aria-label="Управление"><button type="button" role="tab" id="admin-tab-reports" data-admin-tab="reports" aria-controls="admin-panel">Отчёты</button><button type="button" role="tab" id="admin-tab-members" data-admin-tab="members" aria-controls="admin-panel">Участники</button></div><div id="admin-panel" role="tabpanel"><label class="admin-search"><span id="admin-search-label">Поиск</span><input id="admin-search" class="text-input" type="search" maxlength="160" autocomplete="off"></label><div id="admin-filters" class="admin-filters" role="group" aria-label="Статус"></div><p id="admin-live" class="admin-live" role="status"></p><div id="admin-results"></div><nav class="admin-pagination" aria-label="Страницы очереди"><button type="button" id="admin-prev">← Назад</button><span id="admin-page"></span><button type="button" id="admin-next">Далее →</button></nav></div></section>`;
+      target.innerHTML = html`<section
+        id="admin-dashboard"
+        aria-label="Управление командой"
+      >
+        <div class="admin-stats">
+          <button type="button" data-admin-shortcut="reports:pending">
+            <span>На проверке</span
+            ><strong data-admin-count="reports_pending">—</strong
+            ><small>открыть очередь →</small></button
+          ><button type="button" data-admin-shortcut="members:pending">
+            <span>Заявки участников</span
+            ><strong data-admin-count="members_pending">—</strong
+            ><small>разрешить доступ →</small></button
+          ><button type="button" data-admin-shortcut="reports:approved">
+            <span>Опубликовано</span
+            ><strong data-admin-count="reports_approved">—</strong
+            ><small>проверки на сайте →</small>
+          </button>
+        </div>
+        <div class="admin-tabs" role="tablist" aria-label="Управление">
+          <button
+            type="button"
+            role="tab"
+            id="admin-tab-reports"
+            data-admin-tab="reports"
+            aria-controls="admin-panel"
+          >
+            Отчёты</button
+          ><button
+            type="button"
+            role="tab"
+            id="admin-tab-members"
+            data-admin-tab="members"
+            aria-controls="admin-panel"
+          >
+            Участники
+          </button>
+        </div>
+        <div id="admin-panel" role="tabpanel">
+          <label class="admin-search"
+            ><span id="admin-search-label">Поиск</span
+            ><input
+              id="admin-search"
+              class="text-input"
+              type="search"
+              maxlength="160"
+              autocomplete="off"
+          /></label>
+          <div
+            id="admin-filters"
+            class="admin-filters"
+            role="group"
+            aria-label="Статус"
+          ></div>
+          <p id="admin-live" class="admin-live" role="status"></p>
+          <div id="admin-results"></div>
+          <nav class="admin-pagination" aria-label="Страницы очереди">
+            <button type="button" id="admin-prev">← Назад</button
+            ><span id="admin-page"></span
+            ><button type="button" id="admin-next">Далее →</button>
+          </nav>
+        </div>
+      </section>`;
     for (const button of $$("[data-admin-tab]")) {
       const active = button.dataset.adminTab === tab;
       button.setAttribute("aria-selected", String(active));
       button.tabIndex = active ? 0 : -1;
     }
     $("#admin-panel").setAttribute("aria-labelledby", `admin-tab-${tab}`);
-    $("#admin-search").placeholder =
+    window.VSGI18n.attr(
+      $("#admin-search"),
+      "placeholder",
       tab === "reports"
-        ? "Магазин, адрес или автор"
-        : "Имя или почта участника";
-    $("#admin-search-label").textContent =
-      tab === "reports" ? "Найти проверку" : "Найти участника";
+        ? tr("Магазин, адрес или автор")
+        : tr("Имя или почта участника"),
+    );
+    window.VSGI18n.text(
+      $("#admin-search-label"),
+      tab === "reports" ? tr("Найти проверку") : tr("Найти участника"),
+    );
     if (document.activeElement !== $("#admin-search"))
       $("#admin-search").value = current.query;
     $("#admin-filters").innerHTML = choices[tab]
       .map(
         ([value, label]) =>
-          `<button type="button" data-admin-filter="${value}" aria-pressed="${current.filter === value}">${label}</button>`,
+          html`<button
+            type="button"
+            data-admin-filter="${value}"
+            aria-pressed="${current.filter === value}"
+          >
+            ${label}
+          </button>`,
       )
       .join("");
   }
   function counts(data) {
     for (const element of $$("[data-admin-count]"))
-      element.textContent = Number(
-        data[element.dataset.adminCount],
-      ).toLocaleString("ru-RU");
+      window.VSGI18n.text(
+        element,
+        window.VSGI18n.number(data[element.dataset.adminCount]),
+      );
   }
   function memberCard(member) {
-    return `<article class="member-row admin-member"><div><strong>${escapeHTML(member.display_name)}</strong><small>${escapeHTML(member.email)}</small><span class="review-badge ${member.role}">${names[member.role] || "Участник"}</span><small>Регистрация: ${member.created_at ? displayDate(member.created_at) : "дата не указана"}</small></div>${member.role !== "admin" ? `<div class="member-actions">${member.role !== "member" ? `<button type="button" class="member-allow" data-member-id="${member.user_id}" data-member-role="member">Разрешить доступ</button>` : ""}${member.role !== "blocked" ? `<button type="button" data-member-id="${member.user_id}" data-member-role="blocked">${member.role === "pending" ? "Отклонить заявку" : "Приостановить доступ"}</button>` : ""}</div>` : `<span class="admin-role-note">Права администратора</span>`}</article>`;
+    return html`<article class="member-row admin-member">
+      <div>
+        <strong>${escapeHTML(member.display_name)}</strong
+        ><small>${escapeHTML(member.email)}</small
+        ><span class="review-badge ${member.role}"
+          >${names[member.role] || tr("Участник")}</span
+        ><small
+          >Регистрация:
+          ${member.created_at
+            ? displayDate(member.created_at)
+            : tr("дата не указана")}</small
+        >
+      </div>
+      ${member.role !== "admin"
+        ? html`<div class="member-actions">
+            ${member.role !== "member"
+              ? html`<button
+                  type="button"
+                  class="member-allow"
+                  data-member-id="${member.user_id}"
+                  data-member-role="member"
+                >
+                  Разрешить доступ
+                </button>`
+              : ""}${member.role !== "blocked"
+              ? html`<button
+                  type="button"
+                  data-member-id="${member.user_id}"
+                  data-member-role="blocked"
+                >
+                  ${member.role === "pending"
+                    ? tr("Отклонить заявку")
+                    : tr("Приостановить доступ")}
+                </button>`
+              : ""}
+          </div>`
+        : html`<span class="admin-role-note">Права администратора</span>`}
+    </article>`;
   }
   async function load() {
     if (cloudState.profile?.role !== "admin" || !$("#account-data"))
@@ -108,7 +219,7 @@ window.VSGAdmin = (() => {
     const token = ++request,
       current = { ...state[tab] },
       currentTab = tab;
-    $("#admin-live").textContent = "Загружаем очередь…";
+    window.VSGI18n.text($("#admin-live"), tr("Загружаем очередь…"));
     $("#admin-results").inert = true;
     $("#admin-results").setAttribute("aria-busy", "true");
     $("#admin-prev").disabled = true;
@@ -138,13 +249,36 @@ window.VSGAdmin = (() => {
               .map((report) => window.VSGCloudUI.reportCard(report, true))
               .join("")
           : data.items.map(memberCard).join("")
-        : `<div class="admin-empty">${icon(currentTab === "reports" ? "check" : "shield")}<strong>${current.query ? "Ничего не найдено" : current.filter === "pending" ? (currentTab === "reports" ? "Все проверки разобраны" : "Новых заявок пока нет") : "Здесь пока нет записей"}</strong><p>${current.query ? "Попробуйте другое название или сбросьте фильтры." : "Новые записи появятся в этой очереди."}</p><button type="button" data-admin-reset>Сбросить поиск и фильтры</button></div>`;
+        : html`<div class="admin-empty">
+            ${icon(currentTab === "reports" ? "check" : "shield")}<strong
+              >${current.query
+                ? tr("Ничего не найдено")
+                : current.filter === "pending"
+                  ? currentTab === "reports"
+                    ? tr("Все проверки разобраны")
+                    : tr("Новых заявок пока нет")
+                  : tr("Здесь пока нет записей")}</strong
+            >
+            <p>
+              ${current.query
+                ? tr("Попробуйте другое название или сбросьте фильтры.")
+                : tr("Новые записи появятся в этой очереди.")}
+            </p>
+            <button type="button" data-admin-reset>
+              Сбросить поиск и фильтры
+            </button>
+          </div>`;
       restoreNotes();
-      $("#admin-live").textContent =
-        `${currentTab === "reports" ? "Проверок" : "Участников"} найдено: ${data.total}. ${currentTab === "reports" ? "Фото и подробности открываются в карточке." : "Разрешение доступа не публикует отчёты автоматически."}`;
-      $("#admin-page").textContent = data.total
-        ? `${current.offset + 1}–${current.offset + data.items.length} из ${data.total}`
-        : "0 записей";
+      window.VSGI18n.text(
+        $("#admin-live"),
+        tr`${currentTab === "reports" ? tr("Проверок") : tr("Участников")} найдено: ${data.total}. ${currentTab === "reports" ? tr("Фото и подробности открываются в карточке.") : tr("Разрешение доступа не публикует отчёты автоматически.")}`,
+      );
+      window.VSGI18n.text(
+        $("#admin-page"),
+        data.total
+          ? tr`${current.offset + 1}–${current.offset + data.items.length} из ${data.total}`
+          : tr("0 записей"),
+      );
       $("#admin-prev").disabled = current.offset === 0;
       $("#admin-next").disabled =
         current.offset + data.items.length >= data.total;
@@ -152,8 +286,12 @@ window.VSGAdmin = (() => {
     } catch (error) {
       if (token !== request || !$("#admin-live")) return true;
       if (error?.code === "PGRST202") return false;
-      $("#admin-live").textContent =
-        "Не удалось обновить очередь. Поиск и причины отклонения сохранены. Нажмите «Обновить кабинет», чтобы повторить.";
+      window.VSGI18n.text(
+        $("#admin-live"),
+        tr(
+          "Не удалось обновить очередь. Поиск и причины отклонения сохранены. Нажмите «Обновить кабинет», чтобы повторить.",
+        ),
+      );
       return true;
     } finally {
       if (token === request && $("#admin-results")) {
@@ -261,8 +399,12 @@ window.VSGAdmin = (() => {
       if (lastCounts && next !== lastCounts) {
         counts(data.counts);
         lastCounts = next;
-        $("#admin-live").textContent =
-          "В очереди есть изменения. Нажмите «Обновить кабинет», чтобы загрузить актуальные записи. Введённые причины сохранятся.";
+        window.VSGI18n.text(
+          $("#admin-live"),
+          tr(
+            "В очереди есть изменения. Нажмите «Обновить кабинет», чтобы загрузить актуальные записи. Введённые причины сохранятся.",
+          ),
+        );
       }
     } catch {
       /* The visible queue and unsent notes remain intact. */

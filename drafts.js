@@ -22,7 +22,7 @@ window.VSGDrafts = (() => {
   const photoKey = (user, id) => `${key(user)}:${id}`;
 
   function status(text, error = false) {
-    $("#draft-status").textContent = text;
+    window.VSGI18n.text($("#draft-status"), text);
     $("#draft-panel").classList.toggle("has-error", error);
     $("#discard-draft").hidden = !hasContent() && !pendingRestore;
     $("#restore-draft").hidden = !pendingRestore;
@@ -203,7 +203,7 @@ window.VSGDrafts = (() => {
       return queue;
     const record = snapshot(),
       token = generation;
-    status("Сохраняем черновик на этом устройстве…");
+    status(tr("Сохраняем черновик на этом устройстве…"));
     queue = queue
       .then(() => write(record))
       .then(() => {
@@ -211,8 +211,10 @@ window.VSGDrafts = (() => {
           dirty = false;
           status(
             navigator.onLine
-              ? "Черновик сохранён на этом устройстве"
-              : "Нет интернета. Черновик сохранён на этом устройстве — отправите позже.",
+              ? tr("Черновик сохранён на этом устройстве")
+              : tr(
+                  "Нет интернета. Черновик сохранён на этом устройстве — отправите позже.",
+                ),
           );
         }
         return true;
@@ -220,7 +222,9 @@ window.VSGDrafts = (() => {
       .catch(() => {
         if (token === generation)
           status(
-            "Не удалось сохранить черновик на устройстве. Не закрывайте страницу, пока не отправите отчёт.",
+            tr(
+              "Не удалось сохранить черновик на устройстве. Не закрывайте страницу, пока не отправите отчёт.",
+            ),
             true,
           );
         return false;
@@ -235,7 +239,9 @@ window.VSGDrafts = (() => {
     clearTimeout(timer);
     if (pendingRestore) {
       status(
-        "Есть сохранённый черновик. Восстановите его или удалите, чтобы сохранять новую форму.",
+        tr(
+          "Есть сохранённый черновик. Восстановите его или удалите, чтобы сохранять новую форму.",
+        ),
       );
       return;
     }
@@ -243,7 +249,7 @@ window.VSGDrafts = (() => {
       clear({ resetForm: false });
       return;
     }
-    status("Сохраняем черновик…");
+    status(tr("Сохраняем черновик…"));
     timer = setTimeout(flush, 350);
   }
 
@@ -255,9 +261,9 @@ window.VSGDrafts = (() => {
     pendingPhotos = [];
     renderPhotoPreviews();
     changeNewStoreFields();
-    $("#character-count").textContent = "0 / 1000";
-    $("#form-error").textContent = "";
-    $("#photo-error").textContent = "";
+    window.VSGI18n.text($("#character-count"), "0 / 1000");
+    window.VSGI18n.text($("#form-error"), "");
+    window.VSGI18n.text($("#photo-error"), "");
     $("#form-success").hidden = true;
     fallback = null;
     restoring = wasRestoring;
@@ -266,7 +272,7 @@ window.VSGDrafts = (() => {
   async function restore(record) {
     const token = generation;
     restoring = true;
-    status("Восстанавливаем черновик и фотографии…");
+    status(tr("Восстанавливаем черновик и фотографии…"));
     try {
       const photos = [];
       for (const photo of (record.photos || []).slice(0, 6)) {
@@ -298,7 +304,9 @@ window.VSGDrafts = (() => {
           (option) => option.value === "new",
         )
       )
-        $("#store-select").add(new Option("＋ Добавить новый магазин", "new"));
+        $("#store-select").add(
+          window.VSGI18n.option(tr("＋ Добавить новый магазин"), "new"),
+        );
       fallback =
         record.store && typeof record.store.id === "string"
           ? {
@@ -348,8 +356,10 @@ window.VSGDrafts = (() => {
             }
           : undefined,
       );
-      $("#character-count").textContent =
-        `${$("#report-description").value.length} / 1000`;
+      window.VSGI18n.text(
+        $("#character-count"),
+        `${$("#report-description").value.length} / 1000`,
+      );
       submission =
         record.submission &&
         /^[0-9a-f-]{36}$/i.test(record.submission.id) &&
@@ -363,8 +373,10 @@ window.VSGDrafts = (() => {
       dirty = false;
       status(
         photos.length < (record.photos || []).length
-          ? "Черновик восстановлен. Часть фото повреждена — добавьте их ещё раз."
-          : "Черновик восстановлен. Можно продолжить с того же места.",
+          ? tr(
+              "Черновик восстановлен. Часть фото повреждена — добавьте их ещё раз.",
+            )
+          : tr("Черновик восстановлен. Можно продолжить с того же места."),
         photos.length < (record.photos || []).length,
       );
     } finally {
@@ -400,19 +412,25 @@ window.VSGDrafts = (() => {
         if (dirty) {
           pendingRestore = record;
           status(
-            "Есть сохранённый черновик. Восстановите его или удалите, чтобы сохранять новую форму.",
+            tr(
+              "Есть сохранённый черновик. Восстановите его или удалите, чтобы сохранять новую форму.",
+            ),
           );
         } else await restore(record);
       } else if (dirty) changed();
       else
         status(
-          "Форма и фотографии автоматически сохраняются на этом устройстве.",
+          tr(
+            "Форма и фотографии автоматически сохраняются на этом устройстве.",
+          ),
         );
     } catch {
       if (token === generation) {
         loaded = true;
         status(
-          "Хранилище черновиков недоступно. Не закрывайте страницу с неотправленным отчётом.",
+          tr(
+            "Хранилище черновиков недоступно. Не закрывайте страницу с неотправленным отчётом.",
+          ),
           true,
         );
       }
@@ -436,14 +454,14 @@ window.VSGDrafts = (() => {
       .then(() => {
         if (token === generation && revision === savedRevision)
           status(
-            "Черновик удалён. Новая форма будет сохраняться автоматически.",
+            tr("Черновик удалён. Новая форма будет сохраняться автоматически."),
           );
         return true;
       })
       .catch(() => {
         if (token === generation)
           status(
-            "Не удалось удалить черновик с устройства. Попробуйте ещё раз.",
+            tr("Не удалось удалить черновик с устройства. Попробуйте ещё раз."),
             true,
           );
         return false;
@@ -476,7 +494,9 @@ window.VSGDrafts = (() => {
         if (dirty) flush();
         else
           status(
-            "Соединение восстановлено. Черновик можно отправить кнопкой ниже.",
+            tr(
+              "Соединение восстановлено. Черновик можно отправить кнопкой ниже.",
+            ),
           );
       }
       if (cloudMode && cloudState.backend) {
@@ -486,7 +506,11 @@ window.VSGDrafts = (() => {
     });
     $("#discard-draft").addEventListener("click", () => {
       if (readingPhotos || submittingReport) return;
-      if (confirm("Удалить черновик с этого устройства вместе с фотографиями?"))
+      if (
+        confirm(
+          tr("Удалить черновик с этого устройства вместе с фотографиями?"),
+        )
+      )
         clear();
     });
     $("#restore-draft").addEventListener("click", () => {

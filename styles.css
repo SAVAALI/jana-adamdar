@@ -3316,6 +3316,46 @@ body:has(dialog[open]) {
   width: 17px;
   height: 17px;
 }
+.language-switch {
+  display: flex;
+  flex-shrink: 0;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--soft);
+}
+.language-switch button {
+  min-height: 38px;
+  min-width: 42px;
+  padding: 7px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--purple);
+}
+.language-switch button[aria-pressed="true"] {
+  background: var(--purple);
+  color: white;
+}
+@media (max-width: 1100px) and (min-width: 701px) {
+  .header-inner {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 94px;
+    padding-block: 14px;
+    gap: 12px;
+  }
+  .brand {
+    margin-right: auto;
+  }
+  .desktop-nav {
+    order: 5;
+    flex-basis: 100%;
+    justify-content: center;
+    margin: 0;
+  }
+}
 .header-inner:has(.account-button:not([hidden])) {
   gap: 14px;
 }
@@ -4071,5 +4111,59 @@ body:has(dialog[open]) {
   .admin-pagination button {
     padding: 10px;
     font-size: 11px;
+  }
+}
+
+/* Keep the language control, account and menu reachable on a narrow screen. */
+@media (max-width: 700px) {
+  .header-inner:has(.language-switch) {
+    flex-wrap: nowrap;
+    height: 80px;
+    min-height: 80px;
+    padding-block: 0;
+    gap: 6px;
+  }
+  .header-inner:has(.language-switch) .brand {
+    flex-basis: auto;
+    margin-right: auto;
+    gap: 7px;
+  }
+  .site-header .header-inner .brand-crest {
+    width: 30px;
+    height: 35px;
+    padding: 4px;
+  }
+  .site-header .header-inner .brand-copy {
+    font-size: 14px;
+  }
+  .site-header .header-inner .brand-copy small {
+    font-size: 5px;
+    letter-spacing: 0.7px;
+  }
+  .header-inner:has(.language-switch) .account-button {
+    margin-left: 0;
+  }
+  .language-switch {
+    padding: 2px;
+    margin-left: 0;
+    gap: 0;
+    border-radius: 10px;
+  }
+  .language-switch button {
+    min-width: 28px;
+    min-height: 36px;
+    padding: 3px;
+    font-size: 10px;
+  }
+}
+@media (max-width: 370px) {
+  .site-header .header-inner .brand-crest {
+    display: none;
+  }
+  .site-header .header-inner .brand-copy {
+    font-size: 13px;
+  }
+  .header-inner:has(.language-switch) {
+    gap: 5px;
   }
 }
