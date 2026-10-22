@@ -12,8 +12,21 @@ const escapeHTML = (value) =>
         char
       ],
   );
-const imageURL = (value) =>
-  /^(data:image\/(jpeg|png|webp);base64,|assets\/)/.test(value) ? value : "";
+const imageURL = (value) => {
+  if (/^(data:image\/(jpeg|png|webp);base64,|assets\/)/.test(value))
+    return value;
+  try {
+    const image = new URL(value);
+    const trusted = new URL(window.VSG_CONFIG?.url || "https://invalid.local");
+    return image.protocol === "https:" &&
+      image.origin === trusted.origin &&
+      image.pathname.startsWith("/storage/v1/object/sign/vsg-report-photos/")
+      ? image.href
+      : "";
+  } catch {
+    return "";
+  }
+};
 const displayDate = (value) =>
   new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
@@ -163,11 +176,22 @@ const seedStores = [
   },
 ];
 
-let stores = structuredClone(seedStores);
+const cloudMode = Boolean(window.VSG_CONFIG?.enabled);
+const cloudState = {
+  backend: null,
+  profile: null,
+  ready: false,
+  loading: false,
+  stats: null,
+};
+let cloudCatalog = [];
+let submittingReport = false;
+let currentDetailStore = null;
+let stores = cloudMode ? [] : structuredClone(seedStores);
 let userReports = 0;
 let userIssues = 0;
 let currentFilter = "all";
-let selectedId = "polka";
+let selectedId = cloudMode ? null : "polka";
 let zoom = 1;
 let pendingPhotos = [];
 let readingPhotos = false;
@@ -206,9 +230,12 @@ function renderList() {
   $("#result-count").textContent =
     `${visible.length} ${pointsWord(visible.length)}`;
   $("#stat-stores").innerHTML =
-    `${128 + userReports}<span>${icon("arrow")}</span>`;
+    `${cloudMode ? (cloudState.ready ? Number(cloudState.stats.stores) : "—") : 128 + userReports}<span>${icon("arrow")}</span>`;
   $("#stat-issues").innerHTML =
-    `${36 + userIssues}<span>${icon("arrow")}</span>`;
+    `${cloudMode ? (cloudState.ready ? Number(cloudState.stats.violations) : "—") : 36 + userIssues}<span>${icon("arrow")}</span>`;
+  if (cloudMode)
+    $("#stat-members").innerHTML =
+      `${cloudState.ready ? Number(cloudState.stats.members) : "—"}<span>✦</span>`;
   $("#store-list").innerHTML = visible.length
     ? visible
         .map(
@@ -221,6 +248,14 @@ function renderList() {
         )
         .join("")
     : `<div class="empty-state">${icon("search")}<strong>Пока ни одной точки</strong><span>Попробуйте другое название<br>или измените фильтр.</span><button class="reset-filter" id="reset-filter">Сбросить поиск и фильтры</button></div>`;
+  if (cloudMode && !cloudState.ready) {
+    $("#result-count").textContent = "";
+    $("#store-list").innerHTML =
+      `<div class="empty-state">${icon("clock")}<strong>${cloudState.loading ? "Загружаем проверки…" : "Карта временно недоступна"}</strong><span>Обновите карту, чтобы получить отчёты команды.</span></div>`;
+  } else if (cloudMode && !stores.length) {
+    $("#store-list").innerHTML =
+      `<div class="empty-state">${icon("pin")}<strong>Начинаем с первой проверки</strong><span>Одобренные отчёты команды<br>будут появляться здесь.</span><a class="text-link" href="#report">Добавить отчёт →</a></div>`;
+  }
   renderMarkers(visible);
 }
 
@@ -247,14 +282,17 @@ function renderStoreOptions() {
   const previous = $("#store-select").value;
   $("#store-select").innerHTML =
     '<option value="">Выберите магазин</option>' +
-    stores
+    (cloudMode ? cloudCatalog : stores)
       .map(
         (store) =>
           `<option value="${escapeHTML(store.id)}">${escapeHTML(store.name)} · ${escapeHTML(store.address)}</option>`,
       )
       .join("") +
     '<option value="new">＋ Добавить новый магазин</option>';
-  if (previous === "new" || stores.some((store) => store.id === previous))
+  if (
+    previous === "new" ||
+    (cloudMode ? cloudCatalog : stores).some((store) => store.id === previous)
+  )
     $("#store-select").value = previous;
 }
 
@@ -268,16 +306,17 @@ function selectMarker(id) {
   }
 }
 
-function openStore(id, opener = document.activeElement) {
-  const store = stores.find((item) => item.id === id);
+function openStore(id, opener = document.activeElement, override = null) {
+  const store = override || stores.find((item) => item.id === id);
   if (!store) return;
   selectedId = id;
   renderList();
   modalOpener = opener;
+  currentDetailStore = store;
   const photos = store.photos.filter((photo) => imageURL(photo));
   $("#store-detail").innerHTML = `
     <div class="detail-header"><p class="eyebrow">${store.demo ? "ДЕМО-ОТЧЁТ" : "ОТЧЁТ УЧАСТНИКА"} · АСТАНА</p><button class="icon-button detail-close" id="close-detail" aria-label="Закрыть карточку магазина">${icon("close")}</button><h2 id="detail-title">${escapeHTML(store.name)}</h2><p class="detail-address">${icon("pin")}${store.city ? escapeHTML(store.city) + ", " : ""}${escapeHTML(store.address)}</p></div>
-    <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}, ${displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p><h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
+    <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}, ${displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p><h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : cloudMode ? "Фотографии участника команды. Положение точки на карте схематичное; точный адрес указан выше." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
   $("#store-detail").dataset.storeId = id;
   if (!$("#store-dialog").open) $("#store-dialog").showModal();
   $("#close-detail").focus();
@@ -309,7 +348,8 @@ function renderPhotoPreviews() {
 function readFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve({ url: reader.result, name: file.name });
+    reader.onload = () =>
+      resolve({ id: crypto.randomUUID(), url: reader.result, name: file.name });
     reader.onerror = () =>
       reject(
         new Error(
@@ -359,7 +399,7 @@ async function addPhotos(files) {
       );
   }
   readingPhotos = false;
-  $("#submit-report").disabled = false;
+  syncSubmitButton();
   $("#photo-error").textContent = errors.join(" ");
   $("#photo-input").value = "";
   renderPhotoPreviews();
@@ -401,6 +441,15 @@ function saveState() {
   });
 }
 
+function syncSubmitButton() {
+  $("#submit-report").disabled =
+    readingPhotos ||
+    submittingReport ||
+    (cloudMode &&
+      (!cloudState.ready ||
+        !["member", "admin"].includes(cloudState.profile?.role)));
+}
+
 async function submitReport(event) {
   event.preventDefault();
   $("#form-error").textContent = "";
@@ -428,11 +477,22 @@ async function submitReport(event) {
     return;
   }
   const status = $('input[name="result"]:checked').value;
-  const existing = stores.find(
+  const existing = (cloudMode ? cloudCatalog : stores).find(
     (store) => store.id === $("#store-select").value,
   );
   if (!isNew && !existing) {
     $("#form-error").textContent = "Выберите магазин из списка.";
+    return;
+  }
+  if (cloudMode) {
+    await window.VSGCloudUI.submit({
+      storeId: isNew ? null : existing.id,
+      name,
+      address,
+      result: status,
+      description,
+      photos: pendingPhotos,
+    });
     return;
   }
   const duplicate =
@@ -569,9 +629,7 @@ function bindEvents() {
     if (event.target.closest("#close-detail")) closeStore();
     const photo = event.target.closest("[data-photo-index]");
     if (photo) {
-      const store = stores.find(
-        (item) => item.id === $("#store-detail").dataset.storeId,
-      );
+      const store = currentDetailStore;
       const index = Number(photo.dataset.photoIndex);
       $("#lightbox-image").src = imageURL(
         store.photos.filter((item) => imageURL(item))[index],
@@ -667,6 +725,10 @@ function bindEvents() {
 }
 
 async function init() {
+  if (cloudMode) {
+    await window.VSGCloudUI.init();
+    return;
+  }
   // Render immediately; unavailable/private browser storage must not block the UI.
   renderList();
   renderStoreOptions();

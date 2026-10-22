@@ -2873,3 +2873,405 @@ body:has(dialog[open]) {
     animation: none !important;
   }
 }
+
+/* Shared reports and team accounts. The prototype layout stays unchanged. */
+.account-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: white;
+  color: var(--purple);
+  font-size: 11px;
+  font-weight: 600;
+  min-height: 42px;
+  flex-shrink: 0;
+}
+.account-button .icon {
+  width: 17px;
+  height: 17px;
+}
+.header-inner:has(.account-button:not([hidden])) {
+  gap: 14px;
+}
+.header-inner:has(.account-button:not([hidden])) .desktop-nav {
+  margin-right: 5px;
+}
+.cloud-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 12px 15px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft);
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--purple);
+}
+.cloud-status.has-error {
+  background: #fff9dc;
+  border-color: #f1df97;
+  color: #82651e;
+}
+.cloud-status button {
+  flex-shrink: 0;
+  border: 0;
+  padding: 6px 0;
+  background: none;
+  color: var(--purple);
+  font-size: 10px;
+  font-weight: 600;
+  text-decoration: underline;
+}
+.report-access {
+  padding: 12px 13px;
+  margin: 0 0 20px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--purple);
+}
+.report-access p {
+  margin: 0;
+}
+.report-access button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: 0;
+  padding: 5px 0 0;
+  font-size: 10px;
+  color: var(--purple);
+  font-weight: 600;
+}
+.report-access .icon {
+  width: 13px;
+  height: 13px;
+}
+.account-dialog {
+  width: min(760px, calc(100% - 28px));
+  max-height: 90dvh;
+  padding: 34px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 20px 100px #29104c44;
+  overflow-y: auto;
+}
+.account-dialog:has(#auth-form) {
+  width: min(500px, calc(100% - 28px));
+}
+.account-dialog::backdrop {
+  background: #311751aa;
+  backdrop-filter: blur(6px);
+}
+.account-close {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+}
+.account-dialog .eyebrow {
+  font-size: 8px;
+  padding-right: 22px;
+}
+.account-dialog h2 {
+  font-size: 28px;
+  letter-spacing: -1px;
+  padding-right: 16px;
+  line-height: 1.2;
+  margin-bottom: 15px;
+}
+.account-dialog h3 {
+  font-size: 17px;
+  margin: 27px 0 14px;
+  letter-spacing: -0.4px;
+}
+.account-dialog h3 small {
+  display: block;
+  margin-top: 6px;
+  font-size: 9px;
+  color: #aa94ba;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.account-hint,
+.account-loading {
+  font-size: 12px;
+  color: #9983ac;
+  line-height: 1.85;
+  margin: 12px 0 18px;
+}
+.account-identity {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.8;
+  margin: 16px 0 10px;
+  overflow-wrap: anywhere;
+}
+.account-identity span {
+  font-size: 11px;
+  color: #a18bb3;
+  font-weight: 400;
+}
+.auth-submit {
+  width: 100%;
+  margin-top: 16px;
+  justify-content: space-between;
+}
+.auth-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.auth-links button {
+  border: 0;
+  background: none;
+  color: var(--purple);
+  font-size: 11px;
+  padding: 6px 0;
+  text-decoration: underline;
+}
+.auth-feedback {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 12px 0 0;
+  color: var(--purple);
+}
+.auth-feedback:empty {
+  display: none;
+}
+.account-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 17px 0 20px;
+}
+.account-toolbar button,
+.moderation-controls button,
+.member-actions button {
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--purple);
+  font-size: 11px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+.account-toolbar #sign-out {
+  margin-left: auto;
+  background: white;
+}
+.review-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: var(--soft);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--purple);
+  white-space: nowrap;
+}
+.review-badge.pending {
+  background: #fff4b6;
+  color: #876719;
+}
+.review-badge.admin {
+  background: var(--purple);
+  color: white;
+}
+.review-badge.blocked,
+.review-badge.rejected {
+  background: #f4eaf0;
+  color: #965875;
+}
+.account-report {
+  padding: 17px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fdfbff;
+}
+.account-report-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.account-report-heading strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.account-report-address {
+  font-size: 10px;
+  color: #a18db4;
+  line-height: 1.8;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.account-report-description {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #88709b;
+  overflow-wrap: anywhere;
+  margin: 8px 0 12px;
+}
+.account-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--purple);
+  border: 0;
+  padding: 5px 0;
+  background: none;
+  font-weight: 500;
+}
+.account-text-button .icon {
+  width: 14px;
+  height: 14px;
+}
+.moderation-controls {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 13px;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
+}
+.moderation-controls .field-label {
+  margin: 6px 0 -3px;
+}
+.moderation-controls button[data-review="approved"] {
+  background: var(--purple);
+  color: white;
+  border-color: var(--purple);
+}
+.moderation-controls .reject-button {
+  background: #fff6cf;
+  color: #8d6d1f;
+  border-color: #f1df97;
+}
+.moderation-note {
+  background: #f4eaf0;
+  color: #965875;
+  padding: 10px 12px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+.member-row > div {
+  min-width: 0;
+}
+.member-row strong {
+  font-size: 12px;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.member-row small {
+  display: block;
+  font-size: 10px;
+  color: #aa94ba;
+  margin: 6px 0 9px;
+  overflow-wrap: anywhere;
+}
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.member-actions button {
+  font-size: 10px;
+  padding: 9px 10px;
+}
+@media (max-width: 700px) {
+  .account-button {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 11px;
+  }
+  .account-button span {
+    display: none;
+  }
+  .header-inner:has(.account-button:not([hidden])) {
+    gap: 9px;
+  }
+  .header-inner:has(.account-button:not([hidden])) .brand {
+    margin-right: auto;
+  }
+  .cloud-status {
+    padding: 11px 12px;
+    font-size: 9px;
+    gap: 10px;
+  }
+  .cloud-status button {
+    font-size: 9px;
+  }
+  .account-dialog {
+    padding: 28px 20px 24px;
+    border-radius: 16px;
+  }
+  .account-dialog h2 {
+    font-size: 25px;
+  }
+  .account-dialog .eyebrow {
+    font-size: 7px;
+  }
+  .account-hint,
+  .account-loading {
+    font-size: 11px;
+  }
+  .account-report {
+    padding: 14px;
+  }
+  .account-report-heading {
+    flex-wrap: wrap;
+  }
+  .account-report-description {
+    font-size: 11px;
+  }
+  .member-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .member-actions {
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 370px) {
+  .header-inner:has(.account-button:not([hidden])) .brand-copy {
+    font-size: 14px;
+  }
+  .header-inner:has(.account-button:not([hidden])) .account-button,
+  .header-inner:has(.account-button:not([hidden])) .mobile-menu-button {
+    width: 36px;
+    height: 36px;
+  }
+}

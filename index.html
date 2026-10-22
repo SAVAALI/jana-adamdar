@@ -16,6 +16,10 @@
       onerror="this.onerror=null;const fallback=document.createElement('script');fallback.src='assets/tailwind-browser.js';document.head.appendChild(fallback)"
     ></script>
     <link rel="stylesheet" href="styles.css" />
+    <script src="config.js" defer></script>
+    <script src="assets/supabase.js" defer></script>
+    <script src="backend.js" defer></script>
+    <script src="cloud-ui.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body class="selection:bg-[#ffe052] selection:text-[#6631c5]">
@@ -106,6 +110,9 @@
           ><a href="#report" class="nav-link">Загрузка фото</a
           ><a href="#about" class="nav-link">О команде</a>
         </nav>
+        <button type="button" id="account-button" class="account-button" hidden>
+          <svg class="icon"><use href="#i-shield" /></svg><span>Войти</span>
+        </button>
         <a class="button button-violet header-cta" href="#report"
           >Я в деле <svg class="icon"><use href="#i-plus" /></svg
         ></a>
@@ -203,7 +210,7 @@
             ><span>нарушений зафиксировано</span>
           </div>
           <div class="stat">
-            <strong>24<span>✦</span></strong
+            <strong id="stat-members">24<span>✦</span></strong
             ><span>участника команды</span>
           </div>
           <div class="stats-message">
@@ -223,6 +230,10 @@
           <a class="text-link" href="#report"
             >Внести свой вклад <svg class="icon"><use href="#i-arrow" /></svg
           ></a>
+        </div>
+        <div id="cloud-status" class="cloud-status" role="status" hidden>
+          <span id="cloud-notice">Загружаем проверки команды…</span
+          ><button type="button" id="refresh-cloud">Обновить карту</button>
         </div>
         <div class="map-toolbar">
           <div class="filters" role="group" aria-label="Фильтр результатов">
@@ -342,6 +353,7 @@
               <h3>Новый отчёт</h3>
               <span class="form-tag">С МЕСТА СОБЫТИЙ</span>
             </div>
+            <div id="report-access" class="report-access" hidden></div>
             <label class="field-label" for="store-select"
               >Магазин <span>*</span></label
             >
@@ -506,6 +518,21 @@
         <a class="back-top" href="#home">Наверх <span>↑</span></a>
       </div>
     </footer>
+    <dialog
+      id="account-dialog"
+      class="account-dialog"
+      aria-labelledby="account-title"
+    >
+      <button
+        type="button"
+        id="close-account"
+        class="icon-button account-close"
+        aria-label="Закрыть кабинет"
+      >
+        <svg class="icon"><use href="#i-close" /></svg>
+      </button>
+      <div id="account-content"><h2 id="account-title">Вход в команду</h2></div>
+    </dialog>
     <dialog
       id="store-dialog"
       class="store-dialog"
