@@ -101,6 +101,122 @@ const assert = require("node:assert/strict");
   await run(ADMIN, "select public.vsg_set_member_role($1,'blocked')", [
     PENDING,
   ]);
+  const productMigration = fs.readFileSync(
+    nodePath.join(__dirname, "../supabase/products.sql"),
+    "utf8",
+  );
+  await db.exec(productMigration);
+  await db.exec(productMigration);
+  const productId = "ffffffff-ffff-4fff-8fff-ffffffffffff",
+    productFile = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const productPath = `${A}/${productId}/${productFile}.png`;
+  await run(
+    A,
+    "insert into storage.objects(bucket_id,name) values('vsg-report-photos',$1)",
+    [productPath],
+  );
+  const date = (
+    await db.query(
+      "select to_char((now() at time zone 'Asia/Almaty')::date,'YYYY-MM-DD') d",
+    )
+  ).rows[0].d;
+  const expiry = (
+    await db.query(
+      "select to_char((now() at time zone 'Asia/Almaty')::date-3,'YYYY-MM-DD') d",
+    )
+  ).rows[0].d;
+  const goods = [
+    { name: "Йогурт", quantity: 4, expiry, photo_index: 0, expired_days: 999 },
+    { name: "Нечитаемая дата", quantity: 2, expiry: null, photo_index: 0 },
+  ];
+  const productParams = [
+    productId,
+    null,
+    "Товарная проверка",
+    "Достык, 8",
+    "violation",
+    "Фотографии маркировки приложены.",
+    JSON.stringify([{ path: productPath, filename: "маркировка.png" }]),
+    date,
+    JSON.stringify(goods),
+    51.14,
+    71.43,
+  ];
+  const productSubmit =
+    "select public.vsg_submit_product_report($1,$2,$3,$4,$5,$6,$7::jsonb,$8::date,$9::jsonb,$10,$11)";
+  await denied(null, productSubmit, productParams);
+  await denied(PENDING, productSubmit, productParams);
+  for (const invalid of [
+    { ...goods[0], quantity: 1.5 },
+    { ...goods[0], quantity: 0 },
+    { ...goods[0], photo_index: 5 },
+    { ...goods[0], expiry: "2026-02-30" },
+  ])
+    await denied(A, productSubmit, [
+      ...productParams.slice(0, 8),
+      JSON.stringify([invalid]),
+      51.14,
+      71.43,
+    ]);
+  await denied(A, productSubmit, [
+    ...productParams.slice(0, 7),
+    "2200-01-01",
+    ...productParams.slice(8),
+  ]);
+  const cleanParams = [...productParams];
+  cleanParams[4] = "clean";
+  await denied(A, productSubmit, cleanParams);
+  const sameDay = [...cleanParams];
+  sameDay[8] = JSON.stringify([{ ...goods[0], expiry: date }]);
+  await run(A, productSubmit, sameDay);
+  assert.equal(
+    (
+      await run(A, "select products from public.vsg_reports where id=$1", [
+        productId,
+      ])
+    ).rows[0].products[0].expired_days,
+    0,
+  );
+  await db.query("delete from public.vsg_report_photos where report_id=$1", [
+    productId,
+  ]);
+  await db.query("delete from public.vsg_reports where id=$1", [productId]);
+  await db.query(
+    "delete from public.vsg_stores where name='Товарная проверка'",
+  );
+  await run(A, productSubmit, productParams);
+  await run(A, productSubmit, productParams);
+  let productReport = (
+    await run(A, "select * from public.vsg_reports where id=$1", [productId])
+  ).rows[0];
+  assert.equal(productReport.products[0].expired_days, 3);
+  assert.equal(productReport.products[1].expired_days, null);
+  assert.equal(
+    (
+      await run(null, "select * from public.vsg_public_history where id=$1", [
+        productId,
+      ])
+    ).rows.length,
+    0,
+  );
+  await run(ADMIN, "select public.vsg_moderate_report($1,'approved','')", [
+    productId,
+  ]);
+  productReport = (
+    await run(null, "select * from public.vsg_public_history where id=$1", [
+      productId,
+    ])
+  ).rows[0];
+  assert.equal(productReport.products[0].quantity, 4);
+  assert.equal(productReport.products[0].expired_days, 3);
+  await db.query("delete from public.vsg_report_photos where report_id=$1", [
+    productId,
+  ]);
+  await db.query("delete from public.vsg_reports where id=$1", [productId]);
+  await db.query(
+    "delete from public.vsg_stores where name='Товарная проверка'",
+  );
+  await db.query("delete from storage.objects where name=$1", [productPath]);
   const R = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     F = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
   const path = `${A}/${R}/${F}.png`;

@@ -243,7 +243,7 @@ function renderList() {
     <button class="store-card ${store.id === selectedId ? "selected" : ""}" data-store="${escapeHTML(store.id)}" aria-label="${escapeHTML(store.name)}, ${store.status === "clean" ? "всё чисто" : "найдена просрочка"}. Открыть отчёт">
       <span class="store-card-top"><span class="store-name">${escapeHTML(store.name)}</span>${icon("arrow")}</span>
       <span class="store-address">${icon("pin")}${escapeHTML(store.address)}</span>
-      <span class="store-card-bottom">${badge(store.status)}<time class="store-date" datetime="${escapeHTML(store.date)}">${shortDate(store.date)} · ${displayTime(store.date)}</time></span>
+      <span class="store-card-bottom">${badge(store.status)}<time class="store-date" datetime="${escapeHTML(store.date)}">${shortDate(store.date)}${store.checkedDate ? "" : " · " + displayTime(store.date)}</time></span>
     </button>`,
         )
         .join("")
@@ -321,7 +321,7 @@ function openStore(id, opener = document.activeElement, override = null) {
   const photos = store.photos.filter((photo) => imageURL(photo));
   $("#store-detail").innerHTML = `
     <div class="detail-header"><p class="eyebrow">${store.demo ? "ДЕМО-ОТЧЁТ" : "ОТЧЁТ УЧАСТНИКА"} · АСТАНА</p><button class="icon-button detail-close" id="close-detail" aria-label="Закрыть карточку магазина">${icon("close")}</button><h2 id="detail-title">${escapeHTML(store.name)}</h2><p class="detail-address">${icon("pin")}${store.city ? escapeHTML(store.city) + ", " : ""}${escapeHTML(store.address)}</p></div>
-    <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}, ${displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p><h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : cloudMode ? "Фотографии участника команды. Точку на карте указывает участник или администратор. Адрес магазина указан выше." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><section id="store-history" class="store-history" aria-label="История проверок магазина"></section><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
+    <div class="detail-body"><div class="detail-status">${badge(store.status)}<time datetime="${escapeHTML(store.date)}">${displayDate(store.date)}${store.checkedDate ? "" : ", " + displayTime(store.date)} (Астана)</time></div><h3>Результат проверки</h3><p class="detail-description">${escapeHTML(store.description)}</p>${window.VSGProducts.render(store)}<h3>Фотографии <span class="gallery-count">(${photos.length})</span></h3><div class="detail-gallery">${photos.map((photo, index) => `<button class="gallery-photo" data-photo-index="${index}" aria-label="Открыть фотографию ${index + 1} из ${photos.length}"><img src="${escapeHTML(imageURL(photo))}" alt="${store.demo ? "Иллюстрация товаров для демонстрационного отчёта" : "Фото проверки магазина"} ${index + 1}" loading="lazy">${icon("search")}</button>`).join("")}</div><p class="detail-photo-note">${store.demo ? "Учебный пример. Магазин и результат вымышлены, фотографии используются как иллюстрации и не являются доказательством нарушения." : cloudMode ? "Фотографии участника команды. Точку на карте указывает участник или администратор. Адрес магазина указан выше." : "Фотографии добавлены участником. Отчёт хранится в этом браузере и не отправляется на сервер. Положение на карте схематичное."}</p><section id="store-history" class="store-history" aria-label="История проверок магазина"></section><div class="detail-footer"><span>ВРЕМЯ И СТЕКЛО<br>Внимание к деталям. Забота о каждом.</span><button class="button button-purple" id="report-this-store" data-id="${escapeHTML(store.id)}">Добавить проверку ${icon("plus")}</button></div></div>`;
   $("#store-detail").dataset.storeId = id;
   if (!$("#store-dialog").open) $("#store-dialog").showModal();
   $("#close-detail").focus();
@@ -345,6 +345,7 @@ function changeNewStoreFields() {
 }
 
 function renderPhotoPreviews() {
+  window.VSGProducts?.photos();
   $("#photo-previews").innerHTML = pendingPhotos
     .map(
       (photo, index) =>
@@ -492,6 +493,17 @@ async function submitReport(event) {
     return;
   }
   const status = $('input[name="result"]:checked').value;
+  const productDetails = window.VSGProducts.value();
+  if (
+    status === "clean" &&
+    productDetails.products.some(
+      (item) => item.expiry && item.expiry < productDetails.checkedDate,
+    )
+  ) {
+    $("#form-error").textContent =
+      "В списке есть просроченный товар. Проверьте результат проверки.";
+    return;
+  }
   const existing =
     (cloudMode ? cloudCatalog : stores).find(
       (store) => store.id === $("#store-select").value,
@@ -509,6 +521,7 @@ async function submitReport(event) {
       description,
       photos: pendingPhotos,
       location: window.VSGMap?.value(),
+      ...window.VSGProducts.value(),
     });
     return;
   }
@@ -533,7 +546,8 @@ async function submitReport(event) {
     x: target?.x ?? 24 + ((index * 17) % 54),
     y: target?.y ?? 44 + ((index * 13) % 39),
     status,
-    date: new Date().toISOString(),
+    ...window.VSGProducts.value(),
+    date: `${productDetails.checkedDate}T12:00:00+05:00`,
     description,
     photos: pendingPhotos.map((photo) => photo.url),
     demo: false,
@@ -545,6 +559,8 @@ async function submitReport(event) {
             description: target.description,
             photos: target.photos,
             demo: target.demo,
+            products: target.products,
+            checkedDate: target.checkedDate,
           },
           ...(target.history || []),
         ]
@@ -575,6 +591,7 @@ async function submitReport(event) {
   });
   await window.VSGDrafts?.clear({ resetForm: false });
   $("#report-form").reset();
+  window.VSGProducts.restore();
   $("#character-count").textContent = "0 / 1000";
   pendingPhotos = [];
   renderPhotoPreviews();
@@ -713,7 +730,19 @@ function bindEvents() {
   $("#photo-previews").addEventListener("click", (event) => {
     const remove = event.target.closest("[data-remove-photo]");
     if (!remove) return;
-    pendingPhotos.splice(Number(remove.dataset.removePhoto), 1);
+    const removed = Number(remove.dataset.removePhoto);
+    for (const row of $$(".product-row")) {
+      const select = $(".product-photo", row),
+        index = select.value;
+      if (index !== "")
+        select.value =
+          Number(index) === removed
+            ? ""
+            : String(
+                Number(index) > removed ? Number(index) - 1 : Number(index),
+              );
+    }
+    pendingPhotos.splice(removed, 1);
     renderPhotoPreviews();
     window.VSGDrafts?.changed();
   });
@@ -759,6 +788,7 @@ function bindEvents() {
 }
 
 async function init() {
+  window.VSGProducts.init();
   if (cloudMode) {
     window.VSGMap?.init();
     await window.VSGDrafts?.init();

@@ -135,28 +135,46 @@ window.VSGBackend = class VSGBackend {
         if (photo.signedUrl && !photo.error)
           signed.set(photo.path, photo.signedUrl);
     }
-    return rows.map((row, index) => ({
-      id: row.store_id,
-      reportId: row.id,
-      name: isPublic ? row.store_name : row.store?.name || "Магазин",
-      address: isPublic ? row.address : row.store?.address || "",
-      city: isPublic ? row.city : row.store?.city || "Астана",
-      x: 24 + ((index * 17) % 54),
-      y: 44 + ((index * 13) % 39),
-      latitude: typeof row.latitude === "number" ? row.latitude : null,
-      longitude: typeof row.longitude === "number" ? row.longitude : null,
-      status: row.result,
-      date: row.occurred_at,
-      description: row.description,
-      photos: [...(row.photos || [])]
-        .sort((a, b) => (a.order ?? a.sort_order) - (b.order ?? b.sort_order))
-        .map((photo) => signed.get(photo.path || photo.storage_path))
-        .filter(Boolean),
-      demo: false,
-      moderationState: row.moderation_state || "approved",
-      moderationNote: row.moderation_note || "",
-      authorId: row.author_id,
-    }));
+    return rows.map((row, index) => {
+      const photos = [],
+        indices = new Map();
+      for (const photo of [...(row.photos || [])].sort(
+        (a, b) => (a.order ?? a.sort_order) - (b.order ?? b.sort_order),
+      )) {
+        const url = signed.get(photo.path || photo.storage_path);
+        if (url) {
+          indices.set(photo.order ?? photo.sort_order, photos.length);
+          photos.push(url);
+        }
+      }
+      return {
+        id: row.store_id,
+        reportId: row.id,
+        name: isPublic ? row.store_name : row.store?.name || "Магазин",
+        address: isPublic ? row.address : row.store?.address || "",
+        city: isPublic ? row.city : row.store?.city || "Астана",
+        x: 24 + ((index * 17) % 54),
+        y: 44 + ((index * 13) % 39),
+        latitude: typeof row.latitude === "number" ? row.latitude : null,
+        longitude: typeof row.longitude === "number" ? row.longitude : null,
+        products: Array.isArray(row.products)
+          ? row.products.map((product) => ({
+              ...product,
+              photo_index: indices.get(product.photo_index) ?? null,
+              evidence_unavailable: !indices.has(product.photo_index),
+            }))
+          : [],
+        checkedDate: row.checked_date || null,
+        status: row.result,
+        date: row.occurred_at,
+        description: row.description,
+        photos,
+        demo: false,
+        moderationState: row.moderation_state || "approved",
+        moderationNote: row.moderation_note || "",
+        authorId: row.author_id,
+      };
+    });
   }
 
   async publicData() {
@@ -248,7 +266,17 @@ window.VSGBackend = class VSGBackend {
   }
 
   async submit(
-    { storeId, name, address, result, description, photos, location },
+    {
+      storeId,
+      name,
+      address,
+      result,
+      description,
+      photos,
+      location,
+      checkedDate,
+      products,
+    },
     progress,
   ) {
     const draftContext = window.VSGDrafts?.contextToken();
@@ -269,6 +297,8 @@ window.VSGBackend = class VSGBackend {
       result,
       description,
       location,
+      checkedDate,
+      products,
       photos.map((photo) => photo.id),
     ]);
     if (!this.attempt) this.attempt = window.VSGDrafts?.savedAttempt();
@@ -315,21 +345,19 @@ window.VSGBackend = class VSGBackend {
     }
     progress("Отправляем на проверку…");
     checkContext();
-    const response = await this.client.rpc(
-      location ? "vsg_submit_located_report" : "vsg_submit_report",
-      {
-        ...(location
-          ? { p_latitude: location.latitude, p_longitude: location.longitude }
-          : {}),
-        p_report_id: attempt.id,
-        p_store_id: storeId || null,
-        p_store_name: name || null,
-        p_store_address: address || null,
-        p_result: result,
-        p_description: description,
-        p_photos: attachments,
-      },
-    );
+    const response = await this.client.rpc("vsg_submit_product_report", {
+      p_latitude: location?.latitude ?? null,
+      p_longitude: location?.longitude ?? null,
+      p_checked_date: checkedDate,
+      p_products: products,
+      p_report_id: attempt.id,
+      p_store_id: storeId || null,
+      p_store_name: name || null,
+      p_store_address: address || null,
+      p_result: result,
+      p_description: description,
+      p_photos: attachments,
+    });
     if (response.error) {
       // A lost response may follow a successful transaction. Confirm before retrying.
       const saved = await this.client

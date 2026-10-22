@@ -274,6 +274,8 @@ let debugPage;
           store_name: shops.find((s) => s.id === r.store_id).name,
           address: shops.find((s) => s.id === r.store_id).address,
           city: "Астана",
+          checked_date: r.checked_date,
+          products: r.products || [],
           result: r.result,
           description: r.description,
           occurred_at: r.occurred_at,
@@ -360,6 +362,7 @@ let debugPage;
       [
         "/rest/v1/rpc/vsg_submit_report",
         "/rest/v1/rpc/vsg_submit_located_report",
+        "/rest/v1/rpc/vsg_submit_product_report",
       ].includes(path)
     ) {
       const data = request.postDataJSON();
@@ -385,6 +388,8 @@ let debugPage;
           author_id: actor(request),
           latitude: data.p_latitude ?? null,
           longitude: data.p_longitude ?? null,
+          checked_date: data.p_checked_date,
+          products: data.p_products || [],
           result: data.p_result,
           description: data.p_description,
           occurred_at: new Date().toISOString(),
@@ -427,6 +432,49 @@ let debugPage;
   await page.waitForFunction(
     () => document.querySelectorAll(".store-card").length === 1,
   );
+  const mapping = await page.evaluate(async () => {
+    const fake = {
+      config: { bucket: "vsg-report-photos" },
+      check: (response) => response.data,
+      client: {
+        storage: {
+          from: () => ({
+            createSignedUrls: async () => ({
+              data: [
+                { path: "a", error: "Missing" },
+                { path: "b", signedUrl: "https://example.test/b" },
+              ],
+            }),
+          }),
+        },
+      },
+    };
+    const rows = await window.VSGBackend.prototype.hydrate.call(
+      fake,
+      [
+        {
+          store_id: "shop",
+          products: [
+            { name: "Первый", photo_index: 0 },
+            { name: "Второй", photo_index: 1 },
+          ],
+          photos: [
+            { path: "a", order: 0 },
+            { path: "b", order: 1 },
+          ],
+        },
+      ],
+      true,
+    );
+    return rows[0].products.map((p) => ({
+      index: p.photo_index,
+      missing: p.evidence_unavailable,
+    }));
+  });
+  assert.deepEqual(mapping, [
+    { index: null, missing: true },
+    { index: 0, missing: false },
+  ]);
   assert.equal(await page.locator("#submit-report").isDisabled(), true);
   assert.match(await page.locator("#stat-stores").textContent(), /^1/);
   assert.equal(
@@ -574,6 +622,50 @@ let debugPage;
   await page.waitForFunction(() =>
     document.querySelector("#draft-status").textContent.includes("сохранён"),
   );
+  assert.equal(
+    await page.evaluate(() =>
+      window.VSGProducts.days("2024-03-01", "2024-02-29"),
+    ),
+    1,
+  );
+  assert.equal(
+    await page.evaluate(() =>
+      window.VSGProducts.days("2026-10-22", "2026-10-23"),
+    ),
+    -1,
+  );
+  const checkedDate = await page.locator("#checked-date").inputValue();
+  const expiryDate = new Date(
+    Date.parse(checkedDate + "T00:00:00Z") - 3 * 86400000,
+  )
+    .toISOString()
+    .slice(0, 10);
+  await page.locator("#add-product").click();
+  await page.locator(".product-name").first().fill("Йогурт <Danone>");
+  await page.locator(".product-quantity").first().fill("4");
+  await page.locator(".product-expiry").first().fill(expiryDate);
+  await page.locator(".product-photo").first().selectOption("0");
+  assert.match(
+    await page.locator(".product-calculation").first().textContent(),
+    /на 3 дн/,
+  );
+  await page.locator(".product-expiry").first().fill(checkedDate);
+  assert.match(
+    await page.locator(".product-calculation").first().textContent(),
+    /в день проверки/,
+  );
+  await page.locator(".product-expiry").first().fill(expiryDate);
+  await page.locator("#add-product").click();
+  await page.locator(".product-name").nth(1).fill("Хлеб");
+  await page.locator(".product-unknown").nth(1).check();
+  await page.locator(".product-photo").nth(1).selectOption("0");
+  assert.match(
+    await page.locator(".product-calculation").nth(1).textContent(),
+    /уточнения/,
+  );
+  await page.waitForFunction(() =>
+    document.querySelector("#draft-status").textContent.includes("сохранён"),
+  );
   const draftPhoto = await page
     .locator(".photo-preview img")
     .getAttribute("src");
@@ -608,6 +700,20 @@ let debugPage;
   );
   assert.equal(await page.locator("#store-name").inputValue(), "Общий магазин");
   assert.equal(await page.locator("#store-select").inputValue(), "new");
+  assert.equal(
+    await page.locator(".product-name").first().inputValue(),
+    "Йогурт <Danone>",
+  );
+  assert.equal(await page.locator(".product-photo").first().inputValue(), "0");
+  assert.equal(await page.locator(".product-unknown").nth(1).isChecked(), true);
+  await page.locator("input[name=result][value=clean]").check();
+  await page.locator("#submit-report").click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector("#form-error")
+      .textContent.includes("просроченный товар"),
+  );
+  await page.locator("input[name=result][value=violation]").check();
   assert.equal(
     await page.locator(".photo-preview img").getAttribute("src"),
     draftPhoto,
@@ -711,6 +817,39 @@ let debugPage;
   await page.locator("#location-dialog").waitFor({ state: "hidden" });
   assert.notEqual(reports.at(-1).latitude, 51.14);
   assert.equal(await page.locator("[data-real-marker]").count(), 2);
+  await page.locator("#close-account").click();
+  await page
+    .locator(".store-card")
+    .filter({ hasText: "Общий магазин" })
+    .click();
+  await page.waitForFunction(
+    () => document.querySelectorAll(".history-entry").length === 1,
+  );
+  assert.match(
+    await page.locator(".detail-body > .reported-products").textContent(),
+    /Йогурт <Danone>/,
+  );
+  assert.match(
+    await page.locator(".detail-body > .reported-products").textContent(),
+    /4 уп/,
+  );
+  assert.match(
+    await page.locator(".detail-body > .reported-products").textContent(),
+    /на 3 дн/,
+  );
+  assert.equal(await page.locator("Danone").count(), 0);
+  await page
+    .locator(".detail-body > .reported-products .product-evidence")
+    .first()
+    .click();
+  await page.locator("#lightbox-image").evaluate((img) => img.decode());
+  await page.keyboard.press("Escape");
+  await page.locator(".history-entry summary").click();
+  await page.locator(".history-entry .product-evidence").first().click();
+  await page.locator("#lightbox-image").evaluate((img) => img.decode());
+  await page.keyboard.press("Escape");
+  await page.locator("#close-detail").click();
+  await page.locator("#account-button").click();
   assert.match(await page.locator("#stat-stores").textContent(), /^2/);
   assert.match(await page.locator("#stat-issues").textContent(), /^1/);
   await page

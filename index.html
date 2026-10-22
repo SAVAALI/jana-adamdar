@@ -25,6 +25,7 @@
     <script src="cloud-ui.js" defer></script>
     <script src="drafts.js" defer></script>
     <script src="history.js" defer></script>
+    <script src="products.js" defer></script>
     <script src="app.js" defer></script>
   </head>
   <body class="selection:bg-[#ffe052] selection:text-[#6631c5]">
@@ -433,6 +434,25 @@
                 >Место ещё не выбрано</span
               >
             </div>
+            <section class="products-form">
+              <label class="field-label" for="checked-date"
+                >Дата проверки в Астане *</label
+              ><input
+                id="checked-date"
+                class="text-input"
+                type="date"
+                min="2000-01-01"
+                required
+              />
+              <h3>Проверенные товары</h3>
+              <p>
+                Загрузите фотографии ниже, затем выберите фото маркировки для
+                каждого товара из общей галереи. При проверке без нарушений
+                перечислять все товары необязательно.
+              </p>
+              <div id="product-list"></div>
+              <button type="button" id="add-product">＋ Добавить товар</button>
+            </section>
             <fieldset class="result-fieldset">
               <legend class="field-label">Результат проверки</legend>
               <div class="status-options">

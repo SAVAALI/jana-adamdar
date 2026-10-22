@@ -35,7 +35,7 @@ window.VSGCloudUI = (() => {
         "Регистрация сейчас закрыта. Свяжитесь с администратором команды.",
     };
     if (error?.code === "PGRST202")
-      return "Для сохранения места на карте выполните real-map.sql в SQL Editor Supabase.";
+      return "Для сохранения подробного отчёта выполните products.sql в SQL Editor Supabase.";
     if (known[error?.code]) return known[error.code];
     if (error?.message === "Invalid login credentials")
       return known.invalid_credentials;
@@ -270,6 +270,7 @@ window.VSGCloudUI = (() => {
       if (draftContext !== window.VSGDrafts?.contextToken()) return;
       await window.VSGDrafts?.clear({ resetForm: false });
       $("#report-form").reset();
+      window.VSGProducts.restore();
       $("#character-count").textContent = "0 / 1000";
       pendingPhotos = [];
       renderPhotoPreviews();
@@ -436,6 +437,7 @@ window.VSGCloudUI = (() => {
           }
           pendingPhotos = [];
           $("#report-form").reset();
+          window.VSGProducts.restore();
           changeNewStoreFields();
           renderPhotoPreviews();
           $("#character-count").textContent = "0 / 1000";

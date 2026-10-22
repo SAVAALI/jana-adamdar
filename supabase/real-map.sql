@@ -13,13 +13,15 @@ do $$ begin
   end if;
 end $$;
 
+alter table public.vsg_reports add column if not exists checked_date date;
+alter table public.vsg_reports add column if not exists products jsonb not null default '[]'::jsonb;
 create or replace view public.vsg_public_reports with (security_barrier = true) as
   select distinct on (r.store_id)
     r.id, r.store_id, s.name as store_name, s.address, s.city,
     r.result, r.description, r.occurred_at, r.created_at,
     coalesce((select jsonb_agg(jsonb_build_object('path',p.storage_path,'order',p.sort_order) order by p.sort_order)
       from public.vsg_report_photos p where p.report_id = r.id), '[]'::jsonb) as photos,
-    r.latitude, r.longitude
+    r.latitude, r.longitude, r.checked_date, r.products
   from public.vsg_reports r join public.vsg_stores s on s.id = r.store_id
   where r.moderation_state = 'approved'
   order by r.store_id, r.occurred_at desc, r.created_at desc, r.id desc;

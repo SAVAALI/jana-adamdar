@@ -34,6 +34,7 @@ window.VSGDrafts = (() => {
       $("#store-name").value.trim() ||
       $("#store-address").value.trim() ||
       $("#report-description").value.trim() ||
+      window.VSGProducts?.hasContent() ||
       pendingPhotos.length ||
       window.VSGMap?.value()
     );
@@ -135,6 +136,7 @@ window.VSGDrafts = (() => {
         name: photo.name,
         url: photo.url,
       })),
+      productDetails: window.VSGProducts.value(),
       submission,
     };
   }
@@ -249,6 +251,7 @@ window.VSGDrafts = (() => {
     const wasRestoring = restoring;
     restoring = true;
     $("#report-form").reset();
+    window.VSGProducts.restore();
     pendingPhotos = [];
     renderPhotoPreviews();
     changeNewStoreFields();
@@ -328,6 +331,23 @@ window.VSGDrafts = (() => {
       if (cloudMode) window.VSGMap?.restoreDraft(record.location);
       pendingPhotos = photos;
       renderPhotoPreviews();
+      const details = record.productDetails;
+      window.VSGProducts.restore(
+        details
+          ? {
+              ...details,
+              products: Array.isArray(details.products)
+                ? details.products.map((item) => {
+                    const savedId = record.photos?.[item.photo_index]?.id;
+                    const index = photos.findIndex(
+                      (photo) => photo.id === savedId,
+                    );
+                    return { ...item, photo_index: index >= 0 ? index : null };
+                  })
+                : [],
+            }
+          : undefined,
+      );
       $("#character-count").textContent =
         `${$("#report-description").value.length} / 1000`;
       submission =
