@@ -138,7 +138,10 @@ let debugPage;
     passwordUpdates = 0,
     publicFailure = false,
     historyFailure = false,
-    historyMissing = false;
+    historyMissing = false,
+    adminFailure = false,
+    adminMissing = false,
+    moderationFailure = false;
   const submitted = [];
   const uploadedPaths = new Set();
   await context.route(BASE + "/config.js", (route) =>
@@ -406,9 +409,12 @@ let debugPage;
     }
     if (path === "/rest/v1/rpc/vsg_moderate_report") {
       assert.equal(actor(request), ADMIN);
+      if (moderationFailure) return json({ message: "Unavailable" }, 503);
       const data = request.postDataJSON(),
         report = reports.find((r) => r.id === data.p_report_id);
       report.moderation_state = data.p_decision;
+      if (data.p_decision === "rejected")
+        assert.ok(data.p_note.trim().length >= 5);
       report.moderation_note = data.p_note;
       return route.fulfill({ status: 204, headers });
     }
@@ -419,6 +425,69 @@ let debugPage;
       report.latitude = data.p_latitude;
       report.longitude = data.p_longitude;
       return route.fulfill({ status: 204, headers });
+    }
+    if (path === "/rest/v1/rpc/vsg_admin_dashboard") {
+      assert.equal(actor(request), ADMIN);
+      if (adminMissing)
+        return json({ code: "PGRST202", message: "Missing function" }, 404);
+      if (adminFailure) return json({ message: "Unavailable" }, 503);
+      const data = request.postDataJSON();
+      const counts = {
+        reports_pending: reports.filter((r) => r.moderation_state === "pending")
+          .length,
+        reports_approved: reports.filter(
+          (r) => r.moderation_state === "approved",
+        ).length,
+        reports_rejected: reports.filter(
+          (r) => r.moderation_state === "rejected",
+        ).length,
+        members_pending: members.filter((m) => m.role === "pending").length,
+        members_active: members.filter((m) =>
+          ["member", "admin"].includes(m.role),
+        ).length,
+        members_blocked: members.filter((m) => m.role === "blocked").length,
+      };
+      const query = (data.p_query || "").trim().toLowerCase();
+      let items = [];
+      if (data.p_tab === "reports")
+        items = reports
+          .filter(
+            (r) =>
+              (data.p_state === "all" || r.moderation_state === data.p_state) &&
+              [
+                shops.find((s) => s.id === r.store_id).name,
+                shops.find((s) => s.id === r.store_id).address,
+                members.find((m) => m.user_id === r.author_id)?.display_name,
+              ]
+                .join(" ")
+                .toLowerCase()
+                .includes(query),
+          )
+          .sort(
+            (a, b) =>
+              b.created_at.localeCompare(a.created_at) ||
+              b.id.localeCompare(a.id),
+          )
+          .map((r) => ({
+            ...r,
+            author_name:
+              members.find((m) => m.user_id === r.author_id)?.display_name ||
+              "Участник",
+            store: shops.find((s) => s.id === r.store_id),
+          }));
+      if (data.p_tab === "members")
+        items = members
+          .filter(
+            (m) =>
+              (data.p_state === "all" || m.role === data.p_state) &&
+              [m.display_name, m.email].join(" ").toLowerCase().includes(query),
+          )
+          .map((m) => ({ ...m, created_at: new Date().toISOString() }));
+      return json({
+        counts,
+        total: items.length,
+        items: items.slice(data.p_offset, data.p_offset + 20),
+      });
     }
     if (path === "/rest/v1/rpc/vsg_set_member_role") {
       assert.equal(actor(request), ADMIN);
@@ -583,7 +652,9 @@ let debugPage;
     await page.locator("#auth-form button[type=submit]").click();
     await page.locator("#sign-out").waitFor();
     await page.waitForFunction(
-      () => !document.querySelector(".account-loading"),
+      () =>
+        !document.querySelector(".account-loading") &&
+        !document.querySelector("#admin-results[inert]"),
     );
   }
   await page.locator("#auth-email").fill("member@test.kz");
@@ -806,11 +877,141 @@ let debugPage;
     '[data-review=approved][data-report-id="' + submitted[1] + '"]',
   );
   await approval.waitFor();
+  assert.equal(
+    await page.locator('[data-admin-count="reports_pending"]').textContent(),
+    "2",
+  );
+  assert.equal(
+    await page.locator('[data-admin-count="members_pending"]').textContent(),
+    "1",
+  );
+  const seedPending = reports.find(
+    (r) => r.description === "СЕКРЕТНЫЙ ЧЕРНОВОЙ ОТЧЁТ",
+  ).id;
+  const seedCard = page.locator('[data-admin-report="' + seedPending + '"]');
+  const rejectionReason =
+    "Фото срока годности не читается. Нужен крупный план.";
+  await seedCard.locator(".rejection-editor summary").click();
+  await seedCard.locator('[data-review="rejected"]').click();
+  assert.match(
+    await seedCard.locator(".field-error").textContent(),
+    /Выберите причину/,
+  );
+  await seedCard.locator("[data-rejection-preset]").selectOption("custom");
+  await seedCard.locator("[data-rejection-note]").fill(rejectionReason);
+  await page.locator('[data-admin-filter="all"]').click();
+  await page.locator('[data-admin-filter="pending"]').click();
+  await seedCard.locator(".rejection-editor summary").click();
+  assert.equal(
+    await seedCard.locator("[data-rejection-note]").inputValue(),
+    rejectionReason,
+  );
+  moderationFailure = true;
+  await seedCard.locator('[data-review="rejected"]').click();
+  await page.waitForFunction(
+    () => !!document.querySelector("#account-error").textContent,
+  );
+  assert.equal(
+    await seedCard.locator("[data-rejection-note]").inputValue(),
+    rejectionReason,
+  );
+  moderationFailure = false;
+  await seedCard.locator('[data-review="rejected"]').click();
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-admin-count="reports_pending"]')
+        .textContent === "1",
+  );
   await approval.click();
   await page.waitForFunction(
     () => document.querySelectorAll(".store-card").length === 2,
   );
   assert.equal(await page.locator("[data-real-marker]").count(), 2);
+  await page.locator('[data-admin-filter="approved"]').click();
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll("#admin-results .account-report").length === 20,
+  );
+  await page.locator("#admin-next").click();
+  await page.waitForFunction(
+    () => document.querySelector("#admin-page").textContent === "21–24 из 24",
+  );
+  await page.locator("#admin-prev").click();
+  await page.waitForFunction(
+    () => document.querySelector("#admin-page").textContent === "1–20 из 24",
+  );
+  await page.locator("#admin-search").fill("%");
+  await page.locator(".admin-empty").waitFor();
+  assert.match(await page.locator("#admin-live").textContent(), /найдено: 0/);
+  await page.locator("#admin-search").fill("Общий магазин");
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll("#admin-results .account-report").length === 1,
+  );
+  adminFailure = true;
+  await page.locator("#account-refresh").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#admin-live").textContent.includes("Не удалось"),
+  );
+  assert.equal(
+    await page.locator("#admin-search").inputValue(),
+    "Общий магазин",
+  );
+  adminFailure = false;
+  await page.locator("#account-refresh").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#admin-live").textContent.includes("найдено: 1"),
+  );
+  for (const width of [320, 375, 390, 640, 768, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(
+      await page
+        .locator("#account-dialog")
+        .evaluate((d) => d.scrollWidth <= d.clientWidth),
+      true,
+      "admin width " + width,
+    );
+  }
+  const extraPending = {
+    ...reports[0],
+    id: crypto.randomUUID(),
+    moderation_state: "pending",
+  };
+  reports.push(extraPending);
+  await page.evaluate(() => window.VSGAdmin.refreshCounters());
+  assert.equal(
+    await page.locator('[data-admin-count="reports_pending"]').textContent(),
+    "1",
+  );
+  assert.equal(
+    await page.locator("#admin-search").inputValue(),
+    "Общий магазин",
+  );
+  reports.splice(
+    reports.findIndex((r) => r.id === extraPending.id),
+    1,
+  );
+  await page.evaluate(() => window.VSGAdmin.refreshCounters());
+  adminMissing = true;
+  await page.locator("#account-refresh").click();
+  await page.locator(".admin-setup-note").waitFor();
+  adminMissing = false;
+  await page.locator("#account-refresh").click();
+  await page.waitForFunction(() =>
+    document.querySelector("#admin-live")?.textContent.includes("найдено: 1"),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await page
+      .locator("#account-dialog")
+      .evaluate((d) => d.scrollWidth <= d.clientWidth),
+    true,
+  );
+  await page
+    .locator("#account-dialog")
+    .screenshot({ path: "/tmp/vsg-admin-reports-mobile.png" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+
   await page.locator('[data-report-location="' + submitted[1] + '"]').click();
   await page.locator("#location-map").click({ position: { x: 180, y: 180 } });
   await page.locator("#save-location").click();
@@ -852,6 +1053,7 @@ let debugPage;
   await page.locator("#account-button").click();
   assert.match(await page.locator("#stat-stores").textContent(), /^2/);
   assert.match(await page.locator("#stat-issues").textContent(), /^1/);
+  await page.locator('[data-admin-tab="members"]').click();
   await page
     .locator('[data-member-id="' + P + '"][data-member-role=member]')
     .click();
@@ -1055,6 +1257,11 @@ let debugPage;
   await page.locator("#auth-form button[type=submit]").click();
   await page.locator("#sign-out").waitFor();
   assert.equal(passwordUpdates, 1);
+  await page.waitForFunction(() => !document.querySelector(".account-loading"));
+  assert.match(
+    await page.locator("#account-data").textContent(),
+    new RegExp(rejectionReason.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  );
   await page.locator("#close-account").click();
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page
@@ -1096,7 +1303,7 @@ let debugPage;
   assert.equal(await page.locator("#submit-report").isDisabled(), false);
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: actual Supabase SDK against fixture HTTP API; public approved data; signed private photos; auth/signup/reset/error; account roles; upload and retry with stable ID/no duplicate upload; pending report stays private; draft form/photos/location survive reload/offline; stable submission ID after reload; sent/deleted drafts removed; account draft isolation; storage error feedback; published history pagination/photos/privacy/retry; real OSM map/attribution; address search/escaping/bounds; coordinate picker; saved coordinates; admin location correction; admin approval updates public map; membership approval; gallery; stale-data error; 320–1440 responsive layout.",
+    "PASS: actual Supabase SDK against fixture HTTP API; public approved data; signed private photos; auth/signup/reset/error; account roles; upload and retry with stable ID/no duplicate upload; pending report stays private; draft form/photos/location survive reload/offline; stable submission ID after reload; sent/deleted drafts removed; account draft isolation; storage error feedback; published history pagination/photos/privacy/retry; real OSM map/attribution; address search/escaping/bounds; coordinate picker; saved coordinates; admin location correction; admin approval updates public map; admin exact counters/filter/search/pagination; rejection reason validation/persistence/author feedback; membership approval; gallery; stale-data error; 320–1440 responsive layout.",
   );
   await browser.close();
 })().catch(async (error) => {

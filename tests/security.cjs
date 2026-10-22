@@ -504,6 +504,97 @@ const assert = require("node:assert/strict");
     ).rows[0].public,
     false,
   );
+  const adminMigration = fs.readFileSync(
+    nodePath.join(__dirname, "../supabase/admin.sql"),
+    "utf8",
+  );
+  await db.exec(adminMigration);
+  await db.exec(adminMigration);
+  const dashboard = "select public.vsg_admin_dashboard($1,$2,$3,$4) data";
+  await denied(null, dashboard, ["summary", "pending", "", 0]);
+  await denied(A, dashboard, ["summary", "pending", "", 0]);
+  await denied(ADMIN, dashboard, ["reports", "unknown", "", 0]);
+  await denied(ADMIN, dashboard, ["reports", "pending", "", -1]);
+  const queueStore = (
+    await db.query("select id from public.vsg_stores limit 1")
+  ).rows[0].id;
+  await db.query(
+    "insert into public.vsg_reports(id,store_id,author_id,result,description,created_at) select gen_random_uuid(),$1,$2,'clean','Очередь проверок для проверки пагинации',now()-i*interval '1 minute' from generate_series(1,125) i",
+    [queueStore, A],
+  );
+  await db.exec(
+    "insert into auth.users(id,email,raw_user_meta_data,email_confirmed_at) select gen_random_uuid(),'candidate-'||i||'@test.kz',jsonb_build_object('display_name','Заявка '||i),now() from generate_series(1,130) i",
+  );
+  const overview = (await run(ADMIN, dashboard, ["summary", "pending", "", 0]))
+    .rows[0].data;
+  assert.equal(overview.counts.reports_pending, 125);
+  assert.equal(overview.counts.members_pending, 130);
+  const firstPage = (await run(ADMIN, dashboard, ["reports", "pending", "", 0]))
+    .rows[0].data;
+  const nextPage = (await run(ADMIN, dashboard, ["reports", "pending", "", 20]))
+    .rows[0].data;
+  assert.equal(firstPage.total, 125);
+  assert.equal(firstPage.items.length, 20);
+  assert.equal(nextPage.items.length, 20);
+  assert.ok(
+    firstPage.items.every(
+      (item) => !nextPage.items.some((next) => item.id === next.id),
+    ),
+  );
+  assert.equal(
+    (await run(ADMIN, dashboard, ["reports", "pending", "", 120])).rows[0].data
+      .items.length,
+    5,
+  );
+  assert.equal(
+    (await run(ADMIN, dashboard, ["reports", "all", "%", 0])).rows[0].data
+      .total,
+    0,
+  );
+  const memberPage = (
+    await run(ADMIN, dashboard, ["members", "pending", "", 120])
+  ).rows[0].data;
+  assert.equal(memberPage.total, 130);
+  assert.equal(memberPage.items.length, 10);
+  assert.equal(
+    (await run(ADMIN, dashboard, ["members", "pending", "candidate-129@", 0]))
+      .rows[0].data.total,
+    1,
+  );
+  await denied(ADMIN, "select public.vsg_moderate_report($1,'rejected','')", [
+    R,
+  ]);
+  await denied(
+    ADMIN,
+    "select public.vsg_moderate_report($1,'rejected','нет')",
+    [R],
+  );
+  await run(
+    ADMIN,
+    "select public.vsg_moderate_report($1,'rejected','Не видна дата на упаковке')",
+    [R],
+  );
+  assert.equal(
+    (
+      await run(
+        A,
+        "select moderation_note from public.vsg_reports where id=$1",
+        [R],
+      )
+    ).rows[0].moderation_note,
+    "Не видна дата на упаковке",
+  );
+  await run(ADMIN, "select public.vsg_moderate_report($1,'approved','')", [R]);
+  assert.equal(
+    (
+      await run(
+        A,
+        "select moderation_note from public.vsg_reports where id=$1",
+        [R],
+      )
+    ).rows[0].moderation_note,
+    "",
+  );
   console.log(
     "PASS: repeatable schema/map migration; pending signup; admin bootstrap; role boundaries; private pending reports/photos/coordinates; approved-only public view/stats/photos/coordinates; full approved history without private fields; history unpublication; history read-only; admin-only location correction; coordinate bounds; atomic located submission; no personal fields; no direct mutation/escalation; immutable attached photos; orphan cleanup; atomic rejection; idempotent submission.",
   );

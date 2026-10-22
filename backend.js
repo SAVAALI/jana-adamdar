@@ -173,6 +173,8 @@ window.VSGBackend = class VSGBackend {
         moderationState: row.moderation_state || "approved",
         moderationNote: row.moderation_note || "",
         authorId: row.author_id,
+        authorName: row.author_name || "Участник",
+        submittedAt: row.created_at,
       };
     });
   }
@@ -226,6 +228,24 @@ window.VSGBackend = class VSGBackend {
       query = query.eq("author_id", session.user.id);
     }
     return this.hydrate(this.check(await query));
+  }
+
+  async adminDashboard(
+    tab,
+    { filter = "pending", query = "", offset = 0 } = {},
+  ) {
+    const data = this.check(
+      await this.client.rpc("vsg_admin_dashboard", {
+        p_tab: tab,
+        p_state: filter,
+        p_query: query,
+        p_offset: offset,
+      }),
+    );
+    return {
+      ...data,
+      reports: tab === "reports" ? await this.hydrate(data.items) : [],
+    };
   }
 
   async members() {
